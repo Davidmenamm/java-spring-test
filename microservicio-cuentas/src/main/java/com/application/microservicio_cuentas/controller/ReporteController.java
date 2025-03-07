@@ -1,0 +1,45 @@
+package com.application.microservicio_cuentas.controller;
+
+import com.application.microservicio_cuentas.model.Cuenta;
+import com.application.microservicio_cuentas.model.Movimiento;
+import com.application.microservicio_cuentas.service.CuentaService;
+import com.application.microservicio_cuentas.service.MovimientoService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api")
+public class ReporteController {
+    @Autowired
+    private CuentaService cuentaService;
+    @Autowired
+    private MovimientoService movimientoService;
+
+    @GetMapping("/reportes")
+    public Map<String, Object> generarReporte(
+            @RequestParam("fecha-rango") @DateTimeFormat(pattern = "dd/MM/yyyy") Date[] fechaRango,
+            @RequestParam("cliente") String clienteIdentificacion) {
+        List<Cuenta> cuentas = cuentaService.getAllCuentas().stream()
+                .filter(c -> c.getClienteIdentificacion().equals(clienteIdentificacion))
+                .toList();
+        Map<String, Object> reporte = new HashMap<>();
+        cuentas.forEach(cuenta -> {
+            List<Movimiento> movimientos = movimientoService.getReporte(
+                    cuenta.getNumeroCuenta(), fechaRango[0], fechaRango[1]);
+            Map<String, Object> cuentaData = new HashMap<>();
+            cuentaData.put("saldo", cuenta.getSaldoInicial());
+            cuentaData.put("movimientos", movimientos);
+            reporte.put(cuenta.getNumeroCuenta(), cuentaData);
+        });
+        return reporte;
+    }
+}
