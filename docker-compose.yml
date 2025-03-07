@@ -24,7 +24,7 @@ services:
       mysql:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/banco
       SPRING_DATASOURCE_USERNAME: root
@@ -44,10 +44,10 @@ services:
       - db_data:/var/lib/mysql
       - ./BaseDatos.sql:/docker-entrypoint-initdb.d/BaseDatos.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
-      interval: 5s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
     networks:
       - app_network
 
@@ -58,6 +58,11 @@ services:
       - "15673:15672"
     networks:
       - app_network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   app_network:

@@ -1,4 +1,4 @@
-CREATE DATABASE banco;
+CREATE DATABASE IF NOT EXISTS banco;
 USE banco;
 
 CREATE TABLE persona (

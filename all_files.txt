@@ -1,5 +1,33 @@
 
 
+### FILE: ./.gitignore
+
+# Compiled class file
+*.class
+
+# Log file
+*.log
+
+# BlueJ files
+*.ctxt
+
+# Mobile Tools for Java (J2ME)
+.mtj.tmp/
+
+# Package Files #
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+hs_err_pid*
+replay_pid*
+
+
 ### FILE: ./microservicio-cuentas/.gitattributes
 
 /mvnw text eol=lf
@@ -386,6 +414,11 @@ spring.rabbitmq.port=5672
 spring.rabbitmq.username=guest
 spring.rabbitmq.password=guest
 spring.cloud.stream.bindings.output.destination=cuenta-events
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.initialization-fail-timeout=-1
+spring.rabbitmq.template.retry.enabled=true
+spring.rabbitmq.template.retry.max-attempts=5
+spring.rabbitmq.template.retry.initial-interval=5000
 
 ### FILE: ./microservicio-cuentas/src/test/java/com/application/microservicio_cuentas/MicroservicioCuentasApplicationTests.java
 
@@ -872,6 +905,11 @@ spring.rabbitmq.port=5672
 spring.rabbitmq.username=guest
 spring.rabbitmq.password=guest
 spring.cloud.stream.bindings.output.destination=cuenta-events
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.initialization-fail-timeout=-1
+spring.rabbitmq.template.retry.enabled=true
+spring.rabbitmq.template.retry.max-attempts=5
+spring.rabbitmq.template.retry.initial-interval=5000
 
 ### FILE: ./microservicio-cuentas/target/test-classes/com/application/microservicio_cuentas/MicroservicioCuentasApplicationTests.class
 
@@ -1553,6 +1591,11 @@ spring.rabbitmq.port=5672
 spring.rabbitmq.username=guest
 spring.rabbitmq.password=guest
 spring.cloud.stream.bindings.input.destination=cuenta-events
+spring.datasource.hikari.connection-timeout=20000
+spring.datasource.hikari.initialization-fail-timeout=-1
+spring.rabbitmq.template.retry.enabled=true
+spring.rabbitmq.template.retry.max-attempts=5
+spring.rabbitmq.template.retry.initial-interval=5000
 
 ### FILE: ./microservicio-clientes/src/test/java/com/application/microservicio_cliente/MicroservicioClienteApplicationTests.java
 
@@ -3833,7 +3876,7 @@ Endpoints
 
 ### FILE: ./BaseDatos.sql
 
-CREATE DATABASE banco;
+CREATE DATABASE IF NOT EXISTS banco;
 USE banco;
 
 CREATE TABLE persona (
@@ -3893,6 +3936,31 @@ INSERT INTO movimiento (fecha, tipo_movimiento, valor, saldo, numero_cuenta) VAL
 ('2022-02-10 00:00:00', 'Depósito', 600, 700, '225487'),
 ('2022-02-08 00:00:00', 'Retiro', -540, 0, '496825');
 
+### FILE: ./LICENSE
+
+MIT License
+
+Copyright (c) 2025 David Alberto Mena
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
 ### FILE: ./docker-compose.yml
 
 services:
@@ -3921,7 +3989,7 @@ services:
       mysql:
         condition: service_healthy
       rabbitmq:
-        condition: service_started
+        condition: service_healthy
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/banco
       SPRING_DATASOURCE_USERNAME: root
@@ -3941,10 +4009,10 @@ services:
       - db_data:/var/lib/mysql
       - ./BaseDatos.sql:/docker-entrypoint-initdb.d/BaseDatos.sql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"]
-      interval: 5s
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
       timeout: 5s
-      retries: 10
+      retries: 5
     networks:
       - app_network
 
@@ -3955,6 +4023,11 @@ services:
       - "15673:15672"
     networks:
       - app_network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 networks:
   app_network:
