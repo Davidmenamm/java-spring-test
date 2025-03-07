@@ -26,7 +26,8 @@ public class ReporteController {
 
     @GetMapping("/reportes")
     public Map<String, Object> generarReporte(
-            @RequestParam("fecha-rango") @DateTimeFormat(pattern = "dd/MM/yyyy") Date[] fechaRango,
+            @RequestParam("fechaInicio") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaInicio,
+            @RequestParam("fechaFin") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaFin,
             @RequestParam("cliente") String clienteIdentificacion) {
         List<Cuenta> cuentas = cuentaService.getAllCuentas().stream()
                 .filter(c -> c.getClienteIdentificacion().equals(clienteIdentificacion))
@@ -34,7 +35,7 @@ public class ReporteController {
         Map<String, Object> reporte = new HashMap<>();
         cuentas.forEach(cuenta -> {
             List<Movimiento> movimientos = movimientoService.getReporte(
-                    cuenta.getNumeroCuenta(), fechaRango[0], fechaRango[1]);
+                    cuenta.getNumeroCuenta(), fechaInicio, fechaFin);
             Map<String, Object> cuentaData = new HashMap<>();
             cuentaData.put("saldo", cuenta.getSaldoInicial());
             cuentaData.put("movimientos", movimientos);

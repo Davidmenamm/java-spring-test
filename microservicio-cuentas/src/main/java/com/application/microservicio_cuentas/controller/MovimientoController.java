@@ -3,10 +3,9 @@ package com.application.microservicio_cuentas.controller;
 import com.application.microservicio_cuentas.model.Movimiento;
 import com.application.microservicio_cuentas.service.MovimientoService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Date;
 import java.util.List;
 
 @RestController
@@ -20,11 +19,26 @@ public class MovimientoController {
         return movimientoService.registrarMovimiento(movimiento);
     }
 
-    @GetMapping("/reportes")
-    public List<Movimiento> getReporte(
-            @RequestParam("numeroCuenta") String numeroCuenta,
-            @RequestParam("fechaInicio") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaInicio,
-            @RequestParam("fechaFin") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaFin) {
-        return movimientoService.getReporte(numeroCuenta, fechaInicio, fechaFin);
+    @GetMapping
+    public List<Movimiento> getAllMovimientos() {
+        return movimientoService.getAllMovimientos();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Movimiento> getMovimientoById(@PathVariable Long id) {
+        Movimiento movimiento = movimientoService.getMovimientoById(id);
+        return ResponseEntity.ok(movimiento);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Movimiento> updateMovimiento(@PathVariable Long id, @RequestBody Movimiento movimiento) {
+        Movimiento updatedMovimiento = movimientoService.updateMovimiento(id, movimiento);
+        return ResponseEntity.ok(updatedMovimiento);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteMovimiento(@PathVariable Long id) {
+        movimientoService.deleteMovimiento(id);
+        return ResponseEntity.noContent().build();
     }
 }

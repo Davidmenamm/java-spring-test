@@ -34,6 +34,31 @@ public class MovimientoService {
         return movimientoRepository.save(movimiento);
     }
 
+    public List<Movimiento> getAllMovimientos() {
+        return movimientoRepository.findAll();
+    }
+
+    public Movimiento getMovimientoById(Long id) {
+        return movimientoRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Movimiento no encontrado"));
+    }
+
+    @Transactional
+    public Movimiento updateMovimiento(Long id, Movimiento movimiento) {
+        Movimiento existingMovimiento = getMovimientoById(id);
+        existingMovimiento.setFecha(movimiento.getFecha());
+        existingMovimiento.setTipoMovimiento(movimiento.getTipoMovimiento());
+        existingMovimiento.setValor(movimiento.getValor());
+        existingMovimiento.setSaldo(movimiento.getSaldo());
+        existingMovimiento.setNumeroCuenta(movimiento.getNumeroCuenta());
+        return movimientoRepository.save(existingMovimiento);
+    }
+
+    @Transactional
+    public void deleteMovimiento(Long id) {
+        movimientoRepository.deleteById(id);
+    }
+
     public List<Movimiento> getReporte(String numeroCuenta, Date fechaInicio, Date fechaFin) {
         return movimientoRepository.findByNumeroCuentaAndFechaBetween(numeroCuenta, fechaInicio, fechaFin);
     }

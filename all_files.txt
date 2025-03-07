@@ -1,4037 +1,0 @@
-
-
-### FILE: ./.gitignore
-
-# Compiled class file
-*.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
-
-
-### FILE: ./microservicio-cuentas/.gitattributes
-
-/mvnw text eol=lf
-*.cmd text eol=crlf
-
-
-### FILE: ./microservicio-cuentas/.gitignore
-
-HELP.md
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/repository/MovimientoRepository.java
-
-package com.application.microservicio_cuentas.repository;
-
-import com.application.microservicio_cuentas.model.Movimiento;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-import java.util.Date;
-import java.util.List;
-
-public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {
-    List<Movimiento> findByNumeroCuentaAndFechaBetween(String numeroCuenta, Date fechaInicio, Date fechaFin);
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/repository/CuentaRepository.java
-
-package com.application.microservicio_cuentas.repository;
-
-import com.application.microservicio_cuentas.model.Cuenta;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface CuentaRepository extends JpaRepository<Cuenta, String> {}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/SaldoNoDisponibleException.java
-
-package com.application.microservicio_cuentas.exception;
-
-public class SaldoNoDisponibleException extends RuntimeException {
-    public SaldoNoDisponibleException(String message) {
-        super(message);
-    }
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/model/Cuenta.java
-
-package com.application.microservicio_cuentas.model;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-
-@Entity
-public class Cuenta {
-    @Id
-    private String numeroCuenta;
-    private String tipoCuenta;
-    private double saldoInicial;
-    private boolean estado;
-    private String clienteIdentificacion;
-
-    public Cuenta() {}
-
-    public String getNumeroCuenta() { return numeroCuenta; }
-    public void setNumeroCuenta(String numeroCuenta) { this.numeroCuenta = numeroCuenta; }
-    public String getTipoCuenta() { return tipoCuenta; }
-    public void setTipoCuenta(String tipoCuenta) { this.tipoCuenta = tipoCuenta; }
-    public double getSaldoInicial() { return saldoInicial; }
-    public void setSaldoInicial(double saldoInicial) { this.saldoInicial = saldoInicial; }
-    public boolean isEstado() { return estado; }
-    public void setEstado(boolean estado) { this.estado = estado; }
-    public String getClienteIdentificacion() { return clienteIdentificacion; }
-    public void setClienteIdentificacion(String clienteIdentificacion) { this.clienteIdentificacion = clienteIdentificacion; }
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/model/Movimiento.java
-
-package com.application.microservicio_cuentas.model;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import java.util.Date;
-
-@Entity
-public class Movimiento {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-    private Date fecha;
-    private String tipoMovimiento;
-    private double valor;
-    private double saldo;
-    private String numeroCuenta;
-
-    public Movimiento() {}
-
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Date getFecha() { return fecha; }
-    public void setFecha(Date fecha) { this.fecha = fecha; }
-    public String getTipoMovimiento() { return tipoMovimiento; }
-    public void setTipoMovimiento(String tipoMovimiento) { this.tipoMovimiento = tipoMovimiento; }
-    public double getValor() { return valor; }
-    public void setValor(double valor) { this.valor = valor; }
-    public double getSaldo() { return saldo; }
-    public void setSaldo(double saldo) { this.saldo = saldo; }
-    public String getNumeroCuenta() { return numeroCuenta; }
-    public void setNumeroCuenta(String numeroCuenta) { this.numeroCuenta = numeroCuenta; }
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/MicroservicioCuentasApplication.java
-
-package com.application.microservicio_cuentas;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class MicroservicioCuentasApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(MicroservicioCuentasApplication.class, args);
-	}
-
-}
-
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/service/MovimientoService.java
-
-package com.application.microservicio_cuentas.service;
-
-import com.application.microservicio_cuentas.exception.SaldoNoDisponibleException;
-import com.application.microservicio_cuentas.model.Cuenta;
-import com.application.microservicio_cuentas.model.Movimiento;
-import com.application.microservicio_cuentas.repository.CuentaRepository;
-import com.application.microservicio_cuentas.repository.MovimientoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Date;
-import java.util.List;
-
-@Service
-public class MovimientoService {
-    @Autowired
-    private MovimientoRepository movimientoRepository;
-    @Autowired
-    private CuentaRepository cuentaRepository;
-
-    @Transactional
-    public Movimiento registrarMovimiento(Movimiento movimiento) {
-        Cuenta cuenta = cuentaRepository.findById(movimiento.getNumeroCuenta())
-                .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
-        double nuevoSaldo = cuenta.getSaldoInicial() + movimiento.getValor();
-        if (nuevoSaldo < 0) {
-            throw new SaldoNoDisponibleException("Saldo no disponible");
-        }
-        cuenta.setSaldoInicial(nuevoSaldo);
-        movimiento.setSaldo(nuevoSaldo);
-        movimiento.setFecha(new Date());
-        cuentaRepository.save(cuenta);
-        return movimientoRepository.save(movimiento);
-    }
-
-    public List<Movimiento> getReporte(String numeroCuenta, Date fechaInicio, Date fechaFin) {
-        return movimientoRepository.findByNumeroCuentaAndFechaBetween(numeroCuenta, fechaInicio, fechaFin);
-    }
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/service/CuentaService.java
-
-package com.application.microservicio_cuentas.service;
-
-import com.application.microservicio_cuentas.model.Cuenta;
-import com.application.microservicio_cuentas.repository.CuentaRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.stream.function.StreamBridge;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-
-@Service
-public class CuentaService {
-    private final CuentaRepository cuentaRepository;
-    private final StreamBridge streamBridge;
-
-    @Autowired
-    public CuentaService(CuentaRepository cuentaRepository, StreamBridge streamBridge) {
-        this.cuentaRepository = cuentaRepository;
-        this.streamBridge = streamBridge;
-    }
-
-    public List<Cuenta> getAllCuentas() {
-        return cuentaRepository.findAll();
-    }
-
-    public Cuenta saveCuenta(Cuenta cuenta) {
-        Cuenta savedCuenta = cuentaRepository.save(cuenta);
-        streamBridge.send("output", "Cuenta creada: " + savedCuenta.getNumeroCuenta());
-        return savedCuenta;
-    }
-
-    public Cuenta updateCuenta(String numeroCuenta, Cuenta cuenta) {
-        Cuenta existingCuenta = cuentaRepository.findById(numeroCuenta)
-                .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
-        existingCuenta.setTipoCuenta(cuenta.getTipoCuenta());
-        existingCuenta.setSaldoInicial(cuenta.getSaldoInicial());
-        existingCuenta.setEstado(cuenta.isEstado());
-        existingCuenta.setClienteIdentificacion(cuenta.getClienteIdentificacion());
-        return cuentaRepository.save(existingCuenta);
-    }
-
-    public void deleteCuenta(String numeroCuenta) {
-        cuentaRepository.deleteById(numeroCuenta);
-    }
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/controller/MovimientoController.java
-
-package com.application.microservicio_cuentas.controller;
-
-import com.application.microservicio_cuentas.model.Movimiento;
-import com.application.microservicio_cuentas.service.MovimientoService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.Date;
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/movimientos")
-public class MovimientoController {
-    @Autowired
-    private MovimientoService movimientoService;
-
-    @PostMapping
-    public Movimiento registrarMovimiento(@RequestBody Movimiento movimiento) {
-        return movimientoService.registrarMovimiento(movimiento);
-    }
-
-    @GetMapping("/reportes")
-    public List<Movimiento> getReporte(
-            @RequestParam("numeroCuenta") String numeroCuenta,
-            @RequestParam("fechaInicio") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaInicio,
-            @RequestParam("fechaFin") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaFin) {
-        return movimientoService.getReporte(numeroCuenta, fechaInicio, fechaFin);
-    }
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/controller/CuentaController.java
-
-package com.application.microservicio_cuentas.controller;
-
-import com.application.microservicio_cuentas.model.Cuenta;
-import com.application.microservicio_cuentas.service.CuentaService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/cuentas")
-public class CuentaController {
-    @Autowired
-    private CuentaService cuentaService;
-
-    @GetMapping
-    public List<Cuenta> getAllCuentas() {
-        return cuentaService.getAllCuentas();
-    }
-
-    @PostMapping
-    public Cuenta createCuenta(@RequestBody Cuenta cuenta) {
-        return cuentaService.saveCuenta(cuenta);
-    }
-
-    @PutMapping("/{numeroCuenta}")
-    public ResponseEntity<Cuenta> updateCuenta(@PathVariable String numeroCuenta, @RequestBody Cuenta cuenta) {
-        Cuenta updatedCuenta = cuentaService.updateCuenta(numeroCuenta, cuenta);
-        return ResponseEntity.ok(updatedCuenta);
-    }
-
-    @DeleteMapping("/{numeroCuenta}")
-    public ResponseEntity<Void> deleteCuenta(@PathVariable String numeroCuenta) {
-        cuentaService.deleteCuenta(numeroCuenta);
-        return ResponseEntity.noContent().build();
-    }
-}
-
-### FILE: ./microservicio-cuentas/src/main/java/com/application/microservicio_cuentas/controller/ReporteController.java
-
-package com.application.microservicio_cuentas.controller;
-
-import com.application.microservicio_cuentas.model.Cuenta;
-import com.application.microservicio_cuentas.model.Movimiento;
-import com.application.microservicio_cuentas.service.CuentaService;
-import com.application.microservicio_cuentas.service.MovimientoService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-@RestController
-@RequestMapping("/api")
-public class ReporteController {
-    @Autowired
-    private CuentaService cuentaService;
-    @Autowired
-    private MovimientoService movimientoService;
-
-    @GetMapping("/reportes")
-    public Map<String, Object> generarReporte(
-            @RequestParam("fecha-rango") @DateTimeFormat(pattern = "dd/MM/yyyy") Date[] fechaRango,
-            @RequestParam("cliente") String clienteIdentificacion) {
-        List<Cuenta> cuentas = cuentaService.getAllCuentas().stream()
-                .filter(c -> c.getClienteIdentificacion().equals(clienteIdentificacion))
-                .toList();
-        Map<String, Object> reporte = new HashMap<>();
-        cuentas.forEach(cuenta -> {
-            List<Movimiento> movimientos = movimientoService.getReporte(
-                    cuenta.getNumeroCuenta(), fechaRango[0], fechaRango[1]);
-            Map<String, Object> cuentaData = new HashMap<>();
-            cuentaData.put("saldo", cuenta.getSaldoInicial());
-            cuentaData.put("movimientos", movimientos);
-            reporte.put(cuenta.getNumeroCuenta(), cuentaData);
-        });
-        return reporte;
-    }
-}
-
-### FILE: ./microservicio-cuentas/src/main/resources/application.properties
-
-spring.application.name=microservicio-cuentas
-server.port=8081
-spring.datasource.url=jdbc:mysql://mysql:3306/banco
-spring.datasource.username=root
-spring.datasource.password=root
-spring.jpa.hibernate.ddl-auto=update
-spring.rabbitmq.host=rabbitmq
-spring.rabbitmq.port=5672
-spring.rabbitmq.username=guest
-spring.rabbitmq.password=guest
-spring.cloud.stream.bindings.output.destination=cuenta-events
-spring.datasource.hikari.connection-timeout=20000
-spring.datasource.hikari.initialization-fail-timeout=-1
-spring.rabbitmq.template.retry.enabled=true
-spring.rabbitmq.template.retry.max-attempts=5
-spring.rabbitmq.template.retry.initial-interval=5000
-
-### FILE: ./microservicio-cuentas/src/test/java/com/application/microservicio_cuentas/MicroservicioCuentasApplicationTests.java
-
-package com.application.microservicio_cuentas;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-
-@SpringBootTest
-class MicroservicioCuentasApplicationTests {
-
-	@Test
-	void contextLoads() {
-	}
-
-}
-
-
-### FILE: ./microservicio-cuentas/Dockerfile
-
-# Etapa de construcci√≥n
-FROM eclipse-temurin:17-jdk AS build
-WORKDIR /app
-COPY mvnw .
-COPY .mvn .mvn
-COPY pom.xml .
-COPY src src
-RUN ./mvnw clean package -DskipTests
-
-# Etapa de ejecuci√≥n
-FROM eclipse-temurin:17-jre
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8081
-CMD ["java", "-jar", "app.jar"]
-
-### FILE: ./microservicio-cuentas/HELP.md
-
-# Read Me First
-The following was discovered as part of building this project:
-
-* The original package name 'com.application.microservicio-cuentas' is invalid and this project uses 'com.application.microservicio_cuentas' instead.
-
-# Getting Started
-
-### Reference Documentation
-For further reference, please consider the following sections:
-
-* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
-* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/3.4.3/maven-plugin)
-* [Create an OCI image](https://docs.spring.io/spring-boot/3.4.3/maven-plugin/build-image.html)
-
-### Maven Parent overrides
-
-Due to Maven's design, elements are inherited from the parent POM to the project POM.
-While most of the inheritance is fine, it also inherits unwanted elements like `<license>` and `<developers>` from the parent.
-To prevent this, the project POM contains empty overrides for these elements.
-If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
-
-
-
-### FILE: ./microservicio-cuentas/pom.xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.3</version>
-        <relativePath/>
-    </parent>
-    <groupId>com.application</groupId>
-    <artifactId>microservicio-clientes</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>microservicio-clientes</name>
-    <description>Microservicio para gestionar clientes</description>
-    <properties>
-        <java.version>17</java.version>
-    </properties>
-    <dependencies>
-        <!-- Core Spring Boot dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- RabbitMQ and Spring AMQP -->
-        <dependency>
-            <groupId>org.springframework.amqp</groupId>
-            <artifactId>spring-amqp</artifactId>
-            <!-- No version needed; managed by spring-boot-starter-parent -->
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
-        </dependency>
-
-        <!-- Test dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2024.0.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-
-### FILE: ./microservicio-cuentas/mvnw.cmd
-
-<# : batch portion
-@REM ----------------------------------------------------------------------------
-@REM Licensed to the Apache Software Foundation (ASF) under one
-@REM or more contributor license agreements.  See the NOTICE file
-@REM distributed with this work for additional information
-@REM regarding copyright ownership.  The ASF licenses this file
-@REM to you under the Apache License, Version 2.0 (the
-@REM "License"); you may not use this file except in compliance
-@REM with the License.  You may obtain a copy of the License at
-@REM
-@REM    http://www.apache.org/licenses/LICENSE-2.0
-@REM
-@REM Unless required by applicable law or agreed to in writing,
-@REM software distributed under the License is distributed on an
-@REM "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-@REM KIND, either express or implied.  See the License for the
-@REM specific language governing permissions and limitations
-@REM under the License.
-@REM ----------------------------------------------------------------------------
-
-@REM ----------------------------------------------------------------------------
-@REM Apache Maven Wrapper startup batch script, version 3.3.2
-@REM
-@REM Optional ENV vars
-@REM   MVNW_REPOURL - repo url base for downloading maven distribution
-@REM   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
-@REM   MVNW_VERBOSE - true: enable verbose log; others: silence the output
-@REM ----------------------------------------------------------------------------
-
-@IF "%__MVNW_ARG0_NAME__%"=="" (SET __MVNW_ARG0_NAME__=%~nx0)
-@SET __MVNW_CMD__=
-@SET __MVNW_ERROR__=
-@SET __MVNW_PSMODULEP_SAVE=%PSModulePath%
-@SET PSModulePath=
-@FOR /F "usebackq tokens=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir='%~dp0'; $script='%__MVNW_ARG0_NAME__%'; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw '%~f0'))) -NoNewScope}"`) DO @(
-  IF "%%A"=="MVN_CMD" (set __MVNW_CMD__=%%B) ELSE IF "%%B"=="" (echo %%A) ELSE (echo %%A=%%B)
-)
-@SET PSModulePath=%__MVNW_PSMODULEP_SAVE%
-@SET __MVNW_PSMODULEP_SAVE=
-@SET __MVNW_ARG0_NAME__=
-@SET MVNW_USERNAME=
-@SET MVNW_PASSWORD=
-@IF NOT "%__MVNW_CMD__%"=="" (%__MVNW_CMD__% %*)
-@echo Cannot start maven from wrapper >&2 && exit /b 1
-@GOTO :EOF
-: end batch / begin powershell #>
-
-$ErrorActionPreference = "Stop"
-if ($env:MVNW_VERBOSE -eq "true") {
-  $VerbosePreference = "Continue"
-}
-
-# calculate distributionUrl, requires .mvn/wrapper/maven-wrapper.properties
-$distributionUrl = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionUrl
-if (!$distributionUrl) {
-  Write-Error "cannot read distributionUrl property in $scriptDir/.mvn/wrapper/maven-wrapper.properties"
-}
-
-switch -wildcard -casesensitive ( $($distributionUrl -replace '^.*/','') ) {
-  "maven-mvnd-*" {
-    $USE_MVND = $true
-    $distributionUrl = $distributionUrl -replace '-bin\.[^.]*$',"-windows-amd64.zip"
-    $MVN_CMD = "mvnd.cmd"
-    break
-  }
-  default {
-    $USE_MVND = $false
-    $MVN_CMD = $script -replace '^mvnw','mvn'
-    break
-  }
-}
-
-# apply MVNW_REPOURL and calculate MAVEN_HOME
-# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
-if ($env:MVNW_REPOURL) {
-  $MVNW_REPO_PATTERN = if ($USE_MVND) { "/org/apache/maven/" } else { "/maven/mvnd/" }
-  $distributionUrl = "$env:MVNW_REPOURL$MVNW_REPO_PATTERN$($distributionUrl -replace '^.*'+$MVNW_REPO_PATTERN,'')"
-}
-$distributionUrlName = $distributionUrl -replace '^.*/',''
-$distributionUrlNameMain = $distributionUrlName -replace '\.[^.]*$','' -replace '-bin$',''
-$MAVEN_HOME_PARENT = "$HOME/.m2/wrapper/dists/$distributionUrlNameMain"
-if ($env:MAVEN_USER_HOME) {
-  $MAVEN_HOME_PARENT = "$env:MAVEN_USER_HOME/wrapper/dists/$distributionUrlNameMain"
-}
-$MAVEN_HOME_NAME = ([System.Security.Cryptography.MD5]::Create().ComputeHash([byte[]][char[]]$distributionUrl) | ForEach-Object {$_.ToString("x2")}) -join ''
-$MAVEN_HOME = "$MAVEN_HOME_PARENT/$MAVEN_HOME_NAME"
-
-if (Test-Path -Path "$MAVEN_HOME" -PathType Container) {
-  Write-Verbose "found existing MAVEN_HOME at $MAVEN_HOME"
-  Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
-  exit $?
-}
-
-if (! $distributionUrlNameMain -or ($distributionUrlName -eq $distributionUrlNameMain)) {
-  Write-Error "distributionUrl is not valid, must end with *-bin.zip, but found $distributionUrl"
-}
-
-# prepare tmp dir
-$TMP_DOWNLOAD_DIR_HOLDER = New-TemporaryFile
-$TMP_DOWNLOAD_DIR = New-Item -Itemtype Directory -Path "$TMP_DOWNLOAD_DIR_HOLDER.dir"
-$TMP_DOWNLOAD_DIR_HOLDER.Delete() | Out-Null
-trap {
-  if ($TMP_DOWNLOAD_DIR.Exists) {
-    try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
-    catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
-  }
-}
-
-New-Item -Itemtype Directory -Path "$MAVEN_HOME_PARENT" -Force | Out-Null
-
-# Download and Install Apache Maven
-Write-Verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
-Write-Verbose "Downloading from: $distributionUrl"
-Write-Verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
-
-$webclient = New-Object System.Net.WebClient
-if ($env:MVNW_USERNAME -and $env:MVNW_PASSWORD) {
-  $webclient.Credentials = New-Object System.Net.NetworkCredential($env:MVNW_USERNAME, $env:MVNW_PASSWORD)
-}
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$webclient.DownloadFile($distributionUrl, "$TMP_DOWNLOAD_DIR/$distributionUrlName") | Out-Null
-
-# If specified, validate the SHA-256 sum of the Maven distribution zip file
-$distributionSha256Sum = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionSha256Sum
-if ($distributionSha256Sum) {
-  if ($USE_MVND) {
-    Write-Error "Checksum validation is not supported for maven-mvnd. `nPlease disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties."
-  }
-  Import-Module $PSHOME\Modules\Microsoft.PowerShell.Utility -Function Get-FileHash
-  if ((Get-FileHash "$TMP_DOWNLOAD_DIR/$distributionUrlName" -Algorithm SHA256).Hash.ToLower() -ne $distributionSha256Sum) {
-    Write-Error "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised. If you updated your Maven version, you need to update the specified distributionSha256Sum property."
-  }
-}
-
-# unzip and move
-Expand-Archive "$TMP_DOWNLOAD_DIR/$distributionUrlName" -DestinationPath "$TMP_DOWNLOAD_DIR" | Out-Null
-Rename-Item -Path "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" -NewName $MAVEN_HOME_NAME | Out-Null
-try {
-  Move-Item -Path "$TMP_DOWNLOAD_DIR/$MAVEN_HOME_NAME" -Destination $MAVEN_HOME_PARENT | Out-Null
-} catch {
-  if (! (Test-Path -Path "$MAVEN_HOME" -PathType Container)) {
-    Write-Error "fail to move MAVEN_HOME"
-  }
-} finally {
-  try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
-  catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
-}
-
-Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
-
-
-### FILE: ./microservicio-cuentas/.mvn/wrapper/maven-wrapper.properties
-
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-wrapperVersion=3.3.2
-distributionType=only-script
-distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip
-
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/repository/MovimientoRepository.class
-
- ˛∫æ   =   Ecom/application/microservicio_cuentas/repository/MovimientoRepository  java/lang/Object  5org/springframework/data/jpa/repository/JpaRepository !findByNumeroCuentaAndFechaBetween D(Ljava/lang/String;Ljava/util/Date;Ljava/util/Date;)Ljava/util/List; 	Signature ~(Ljava/lang/String;Ljava/util/Date;Ljava/util/Date;)Ljava/util/List<Lcom/application/microservicio_cuentas/model/Movimiento;>; numeroCuenta fechaInicio fechaFin MethodParameters 
-SourceFile MovimientoRepository.java ìLjava/lang/Object;Lorg/springframework/data/jpa/repository/JpaRepository<Lcom/application/microservicio_cuentas/model/Movimiento;Ljava/lang/Long;>;           	    
-                    	    
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/repository/CuentaRepository.class
-
- ˛∫æ   =   Acom/application/microservicio_cuentas/repository/CuentaRepository  java/lang/Object  5org/springframework/data/jpa/repository/JpaRepository 
-SourceFile CuentaRepository.java 	Signature ëLjava/lang/Object;Lorg/springframework/data/jpa/repository/JpaRepository<Lcom/application/microservicio_cuentas/model/Cuenta;Ljava/lang/String;>;               	    
-
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/SaldoNoDisponibleException.class
-
- ˛∫æ   =   @com/application/microservicio_cuentas/SaldoNoDisponibleException  java/lang/RuntimeException <init> (Ljava/lang/String;)V Code 	 java/lang/Error  µUnresolved compilation problem: 
-	The declared package "com.application.microservicio_cuentas.exception" does not match the expected package "com.application.microservicio_cuentas"
-
-     LineNumberTable LocalVariableTable this BLcom/application/microservicio_cuentas/SaldoNoDisponibleException; message MethodParameters 
-SourceFile SaldoNoDisponibleException.java !               4     
-ª Y
-∑ ø                   
-                 
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/model/Cuenta.class
-
- ˛∫æ   = 6  2com/application/microservicio_cuentas/model/Cuenta  java/lang/Object numeroCuenta Ljava/lang/String; RuntimeVisibleAnnotations Ljakarta/persistence/Id; 
-tipoCuenta saldoInicial D estado Z clienteIdentificacion <init> ()V Code
-     LineNumberTable LocalVariableTable this 4Lcom/application/microservicio_cuentas/model/Cuenta; getNumeroCuenta ()Ljava/lang/String;	     setNumeroCuenta (Ljava/lang/String;)V MethodParameters getTipoCuenta	  ! 	  setTipoCuenta getSaldoInicial ()D	  & 
-  setSaldoInicial (D)V isEstado ()Z	  ,   	setEstado (Z)V getClienteIdentificacion	  1   setClienteIdentificacion 
-SourceFile Cuenta.java Ljakarta/persistence/Entity; !                   	     
-                      /     *∑ ±                               /     *¥ ∞                               :     *+µ ±                                            /     *¥  ∞                         "      :     *+µ  ±                           	       	    # $     /     *¥ %Ø                         ' (     :     *'µ %±                           
-       
-    ) *     /     *¥ +¨                         - .     :     *µ +±                                      /      /     *¥ 0∞                         2      :     *+µ 0±                                      3    4      5  
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/model/Movimiento.class
-
- ˛∫æ   = B  6com/application/microservicio_cuentas/model/Movimiento  java/lang/Object id Ljava/lang/Long; RuntimeVisibleAnnotations Ljakarta/persistence/Id; $Ljakarta/persistence/GeneratedValue; strategy $Ljakarta/persistence/GenerationType; IDENTITY fecha Ljava/util/Date; tipoMovimiento Ljava/lang/String; valor D saldo numeroCuenta <init> ()V Code
-     LineNumberTable LocalVariableTable this 8Lcom/application/microservicio_cuentas/model/Movimiento; getId ()Ljava/lang/Long;	  !   setId (Ljava/lang/Long;)V MethodParameters getFecha ()Ljava/util/Date;	  (   setFecha (Ljava/util/Date;)V getTipoMovimiento ()Ljava/lang/String;	  .   setTipoMovimiento (Ljava/lang/String;)V getValor ()D	  4   setValor (D)V getSaldo	  9   setSaldo getNumeroCuenta	  =   setNumeroCuenta 
-SourceFile Movimiento.java Ljakarta/persistence/Entity; !                  	  
-e                                    /     *∑ ±                               /     *¥  ∞                         " #     :     *+µ  ±                              $        % &     /     *¥ '∞                         ) *     :     *+µ '±                              $        + ,     /     *¥ -∞                         / 0     :     *+µ -±                              $        1 2     /     *¥ 3Ø                         5 6     :     *'µ 3±                              $        7 2     /     *¥ 8Ø                         : 6     :     *'µ 8±                              $        ; ,     /     *¥ <∞                          > 0     :     *+µ <±           !                   $        ?    @      A  
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/service/MovimientoService.class
-
- ˛∫æ   = 3  ?com/application/microservicio_cuentas/service/MovimientoService  java/lang/Object movimientoRepository GLcom/application/microservicio_cuentas/repository/MovimientoRepository; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; cuentaRepository CLcom/application/microservicio_cuentas/repository/CuentaRepository; <init> ()V Code
-     LineNumberTable LocalVariableTable this ALcom/application/microservicio_cuentas/service/MovimientoService; registrarMovimiento r(Lcom/application/microservicio_cuentas/model/Movimiento;)Lcom/application/microservicio_cuentas/model/Movimiento; :Lorg/springframework/transaction/annotation/Transactional;  java/lang/Error  ZUnresolved compilation problem: 
-	SaldoNoDisponibleException cannot be resolved to a type
-
-     (Ljava/lang/String;)V 
-movimiento MethodParameters 
-getReporte D(Ljava/lang/String;Ljava/util/Date;Ljava/util/Date;)Ljava/util/List; 	Signature ~(Ljava/lang/String;Ljava/util/Date;Ljava/util/Date;)Ljava/util/List<Lcom/application/microservicio_cuentas/model/Movimiento;>;	  %   ' ) ( Ecom/application/microservicio_cuentas/repository/MovimientoRepository * ! !findByNumeroCuentaAndFechaBetween numeroCuenta Ljava/lang/String; fechaInicio Ljava/util/Date; fechaFin 
-SourceFile MovimientoService.java (Lorg/springframework/stereotype/Service; !                   	 
-                  /     *∑ ±                                       4     
-ª Y∑ ø                   
-               !  "    #    U     *¥ $+,-π & ∞           &    *            + ,     - .     / .      +   -   /    0    1      2  
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/service/CuentaService.class
-
- ˛∫æ   = ö  ;com/application/microservicio_cuentas/service/CuentaService  java/lang/Object cuentaRepository CLcom/application/microservicio_cuentas/repository/CuentaRepository; streamBridge 8Lorg/springframework/cloud/stream/function/StreamBridge; <init> ~(Lcom/application/microservicio_cuentas/repository/CuentaRepository;Lorg/springframework/cloud/stream/function/StreamBridge;)V RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; Code
-   	  ()V	    	     LineNumberTable LocalVariableTable this =Lcom/application/microservicio_cuentas/service/CuentaService; MethodParameters getAllCuentas ()Ljava/util/List; 	Signature H()Ljava/util/List<Lcom/application/microservicio_cuentas/model/Cuenta;>;  !   Acom/application/microservicio_cuentas/repository/CuentaRepository "  findAll 
-saveCuenta j(Lcom/application/microservicio_cuentas/model/Cuenta;)Lcom/application/microservicio_cuentas/model/Cuenta;  & ' ( save &(Ljava/lang/Object;)Ljava/lang/Object; * 2com/application/microservicio_cuentas/model/Cuenta , output
- ) . / 0 getNumeroCuenta ()Ljava/lang/String;   2 3 4 makeConcatWithConstants &(Ljava/lang/String;)Ljava/lang/String;
- 6 8 7 6org/springframework/cloud/stream/function/StreamBridge 9 : send '(Ljava/lang/String;Ljava/lang/Object;)Z cuenta 4Lcom/application/microservicio_cuentas/model/Cuenta; savedCuenta updateCuenta |(Ljava/lang/String;Lcom/application/microservicio_cuentas/model/Cuenta;)Lcom/application/microservicio_cuentas/model/Cuenta;  A B C findById ((Ljava/lang/Object;)Ljava/util/Optional;  E F G get ()Ljava/util/function/Supplier;
- I K J java/util/Optional L M orElseThrow 1(Ljava/util/function/Supplier;)Ljava/lang/Object;
- ) O P 0 getTipoCuenta
- ) R S T setTipoCuenta (Ljava/lang/String;)V
- ) V W X getSaldoInicial ()D
- ) Z [ \ setSaldoInicial (D)V
- ) ^ _ ` isEstado ()Z
- ) b c d 	setEstado (Z)V
- ) f g 0 getClienteIdentificacion
- ) i j T setClienteIdentificacion numeroCuenta Ljava/lang/String; existingCuenta deleteCuenta  p q r 
-deleteById (Ljava/lang/Object;)V lambda$0 ()Ljava/lang/RuntimeException; v java/lang/RuntimeException x Cuenta no encontrada
- u z 	 T 
-SourceFile CuentaService.java (Lorg/springframework/stereotype/Service; BootstrapMethods
- Ä Ç Å $java/lang/invoke/StringConcatFactory 3 É ò(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;  Ü Cuenta creada: 
- à ä â "java/lang/invoke/LambdaMetafactory ã å metafactory Ã(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; á ()Ljava/lang/Object; é
-  ë s t ê t InnerClasses ñ %java/lang/invoke/MethodHandles$Lookup ò java/lang/invoke/MethodHandles Lookup !                  	 
-             Y     *∑ *+µ *,µ ±              	                                	                   4     
-*¥ π  ∞                   
-      # $     i     #*¥ +π % ¿ )M*¥ +,∂ -∫ 1  ∂ 5W,∞              !          #       # ; <    = <      ;    > ?     ®     D*¥ +π @ ∫ D  ∂ H¿ )N-,∂ N∂ Q-,∂ U∂ Y-,∂ ]∂ a-,∂ e∂ h*¥ -π % ¿ )∞       "    ! 
- "  !  #  $ & % . & 6 '    *    D       D k l    D ; <   . m <     	 k   ;    n T     C     *¥ +π o ±       
-    + 
- ,                k l      k  
- s t     *      
-ª uYw∑ y∞           "        {    |      }   ~     Ñ  Ö ç  è í ì î   
-  ï ó ô 
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/MicroservicioCuentasApplication.class
-
- ˛∫æ   =   Ecom/application/microservicio_cuentas/MicroservicioCuentasApplication  java/lang/Object <init> ()V Code
-  	   LineNumberTable LocalVariableTable this GLcom/application/microservicio_cuentas/MicroservicioCuentasApplication; main ([Ljava/lang/String;)V
-    *org/springframework/boot/SpringApplication   run b(Ljava/lang/Class;[Ljava/lang/String;)Lorg/springframework/context/ConfigurableApplicationContext; args [Ljava/lang/String; MethodParameters 
-SourceFile $MicroservicioCuentasApplication.java RuntimeVisibleAnnotations >Lorg/springframework/boot/autoconfigure/SpringBootApplication; !               /     *∑ ±    
-                    	       6     *∏ W±    
-   
-    
-                                   
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/controller/CuentaController.class
-
- ˛∫æ   = S  Acom/application/microservicio_cuentas/controller/CuentaController  java/lang/Object cuentaService =Lcom/application/microservicio_cuentas/service/CuentaService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code
-   	 
- LineNumberTable LocalVariableTable this CLcom/application/microservicio_cuentas/controller/CuentaController; getAllCuentas ()Ljava/util/List; 	Signature H()Ljava/util/List<Lcom/application/microservicio_cuentas/model/Cuenta;>; 4Lorg/springframework/web/bind/annotation/GetMapping;	    
-    ;com/application/microservicio_cuentas/service/CuentaService   createCuenta j(Lcom/application/microservicio_cuentas/model/Cuenta;)Lcom/application/microservicio_cuentas/model/Cuenta; 5Lorg/springframework/web/bind/annotation/PostMapping; "RuntimeVisibleParameterAnnotations 5Lorg/springframework/web/bind/annotation/RequestBody;
-  # $  
-saveCuenta cuenta 4Lcom/application/microservicio_cuentas/model/Cuenta; MethodParameters updateCuenta q(Ljava/lang/String;Lcom/application/microservicio_cuentas/model/Cuenta;)Lorg/springframework/http/ResponseEntity; ß(Ljava/lang/String;Lcom/application/microservicio_cuentas/model/Cuenta;)Lorg/springframework/http/ResponseEntity<Lcom/application/microservicio_cuentas/model/Cuenta;>; 4Lorg/springframework/web/bind/annotation/PutMapping; value /{numeroCuenta} 6Lorg/springframework/web/bind/annotation/PathVariable;
-  0 ( 1 |(Ljava/lang/String;Lcom/application/microservicio_cuentas/model/Cuenta;)Lcom/application/microservicio_cuentas/model/Cuenta;
- 3 5 4 'org/springframework/http/ResponseEntity 6 7 ok =(Ljava/lang/Object;)Lorg/springframework/http/ResponseEntity; numeroCuenta Ljava/lang/String; updatedCuenta deleteCuenta =(Ljava/lang/String;)Lorg/springframework/http/ResponseEntity; O(Ljava/lang/String;)Lorg/springframework/http/ResponseEntity<Ljava/lang/Void;>; 7Lorg/springframework/web/bind/annotation/DeleteMapping;
-  @ ; A (Ljava/lang/String;)V
- 3 C D E 	noContent :()Lorg/springframework/http/ResponseEntity$HeadersBuilder; G I H 6org/springframework/http/ResponseEntity$HeadersBuilder J K build +()Lorg/springframework/http/ResponseEntity; 
-SourceFile CuentaController.java 8Lorg/springframework/web/bind/annotation/RestController; 8Lorg/springframework/web/bind/annotation/RequestMapping; /api/cuentas InnerClasses HeadersBuilder !                    	 
-     /     *∑ ±                                            2     *¥ ∂ ∞                                          !      =     	*¥ +∂ "∞                   	       	 % &  '    %    ( )      *      +  ,[ s -       .    !      [     *¥ +,∂ /N-∏ 2∞       
-     
-     *            8 9     % &  
-  : &  '   	 8   %    ; <      =      >  ,[ s -       .      I     *¥ +∂ ?∏ Bπ F ∞       
-    #  $                8 9  '    8    L    M      N   O  ,[ s P Q   
-  G 3 R	
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/controller/MovimientoController.class
-
- ˛∫æ   = 7  Ecom/application/microservicio_cuentas/controller/MovimientoController  java/lang/Object movimientoService ALcom/application/microservicio_cuentas/service/MovimientoService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code
-   	 
- LineNumberTable LocalVariableTable this GLcom/application/microservicio_cuentas/controller/MovimientoController; registrarMovimiento r(Lcom/application/microservicio_cuentas/model/Movimiento;)Lcom/application/microservicio_cuentas/model/Movimiento; 5Lorg/springframework/web/bind/annotation/PostMapping; "RuntimeVisibleParameterAnnotations 5Lorg/springframework/web/bind/annotation/RequestBody;	    
-    ?com/application/microservicio_cuentas/service/MovimientoService   
-movimiento 8Lcom/application/microservicio_cuentas/model/Movimiento; MethodParameters 
-getReporte D(Ljava/lang/String;Ljava/util/Date;Ljava/util/Date;)Ljava/util/List; 	Signature ~(Ljava/lang/String;Ljava/util/Date;Ljava/util/Date;)Ljava/util/List<Lcom/application/microservicio_cuentas/model/Movimiento;>; 4Lorg/springframework/web/bind/annotation/GetMapping; value 	/reportes 6Lorg/springframework/web/bind/annotation/RequestParam; numeroCuenta fechaInicio 6Lorg/springframework/format/annotation/DateTimeFormat; pattern 
-dd/MM/yyyy fechaFin
-  /   ! Ljava/lang/String; Ljava/util/Date; 
-SourceFile MovimientoController.java 8Lorg/springframework/web/bind/annotation/RestController; 8Lorg/springframework/web/bind/annotation/RequestMapping; /api/movimientos !                    	 
-     /     *∑ ±                                               =     	*¥ +∂ ∞                   	       	              !  "    #      $  %[ s &    4  '  %s (  '  %s ) *  +s ,  '  %s - *  +s ,    S     *¥ +,-∂ .∞               *            ( 0     ) 1     - 1      (   )   -    2    3      4   5  %[ s 6
-
-### FILE: ./microservicio-cuentas/target/classes/com/application/microservicio_cuentas/controller/ReporteController.class
-
- ˛∫æ   = ®  Bcom/application/microservicio_cuentas/controller/ReporteController  java/lang/Object cuentaService =Lcom/application/microservicio_cuentas/service/CuentaService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; movimientoService ALcom/application/microservicio_cuentas/service/MovimientoService; <init> ()V Code
-     LineNumberTable LocalVariableTable this DLcom/application/microservicio_cuentas/controller/ReporteController; generarReporte 4([Ljava/util/Date;Ljava/lang/String;)Ljava/util/Map; 	Signature Z([Ljava/util/Date;Ljava/lang/String;)Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>; 4Lorg/springframework/web/bind/annotation/GetMapping; value 	/reportes "RuntimeVisibleParameterAnnotations 6Lorg/springframework/web/bind/annotation/RequestParam; fecha-rango 6Lorg/springframework/format/annotation/DateTimeFormat; pattern 
-dd/MM/yyyy cliente	  #  
- % ' & ;com/application/microservicio_cuentas/service/CuentaService ( ) getAllCuentas ()Ljava/util/List; + - , java/util/List . / stream ()Ljava/util/stream/Stream;   1 2 3 test 2(Ljava/lang/String;)Ljava/util/function/Predicate; 5 7 6 java/util/stream/Stream 8 9 filter 9(Ljava/util/function/Predicate;)Ljava/util/stream/Stream; 5 ; < ) toList > java/util/HashMap
- =   A B C accept É(Lcom/application/microservicio_cuentas/controller/ReporteController;[Ljava/util/Date;Ljava/util/Map;)Ljava/util/function/Consumer; + E F G forEach  (Ljava/util/function/Consumer;)V 
-fechaRango [Ljava/util/Date; clienteIdentificacion Ljava/lang/String; cuentas Ljava/util/List; reporte Ljava/util/Map; LocalVariableTypeTable FLjava/util/List<Lcom/application/microservicio_cuentas/model/Cuenta;>; 5Ljava/util/Map<Ljava/lang/String;Ljava/lang/Object;>; MethodParameters lambda$0 I(Ljava/lang/String;Lcom/application/microservicio_cuentas/model/Cuenta;)Z
- W Y X 2com/application/microservicio_cuentas/model/Cuenta Z [ getClienteIdentificacion ()Ljava/lang/String;
- ] _ ^ java/lang/String ` a equals (Ljava/lang/Object;)Z c 4Lcom/application/microservicio_cuentas/model/Cuenta; lambda$1 W([Ljava/util/Date;Ljava/util/Map;Lcom/application/microservicio_cuentas/model/Cuenta;)V	  g 	 
-
- W i j [ getNumeroCuenta
- l n m ?com/application/microservicio_cuentas/service/MovimientoService o p 
-getReporte D(Ljava/lang/String;Ljava/util/Date;Ljava/util/Date;)Ljava/util/List; r saldo
- W t u v getSaldoInicial ()D
- x z y java/lang/Double { | valueOf (D)Ljava/lang/Double; ~ Ä  java/util/Map Å Ç put 8(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object; Ñ movimientos cuenta 
-cuentaData JLjava/util/List<Lcom/application/microservicio_cuentas/model/Movimiento;>; 
-SourceFile ReporteController.java 8Lorg/springframework/web/bind/annotation/RestController; 8Lorg/springframework/web/bind/annotation/RequestMapping; /api BootstrapMethods
- è ë ê "java/lang/invoke/LambdaMetafactory í ì metafactory Ã(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; é a
-  ó T U ñ 7(Lcom/application/microservicio_cuentas/model/Cuenta;)Z ô (Ljava/lang/Object;)V õ
-  û d e ù 7(Lcom/application/microservicio_cuentas/model/Cuenta;)V † InnerClasses § %java/lang/invoke/MethodHandles$Lookup ¶ java/lang/invoke/MethodHandles Lookup !                   	 
-                  /     *∑ ±                                        [ s          s    s      s !    æ     8*¥ "∂ $π * ,∫ 0  π 4 π : Nª =Y∑ ?:-*+∫ @  π D ∞                !    " & # 5 +    4    8       8 H I    8 J K    L M  &  N O  P       L Q  &  N R  S   	 H   J  
- T U     3     	+∂ V*∂ \¨                    	 b c  d e     «     G*¥ f-∂ h+2+2∂ k:ª =Y∑ ?:q-∂ s∏ wπ } WÉπ } W,-∂ hπ } W±       "    $  %  $  &  ' - ( 9 ) F *    *    G       G Ö c   3 Ñ M   * Ü O  P      3 Ñ á   * Ü R   à    â      ä   ã  [ s å ç     î  ï ò ö î  ú ü ° ¢   
-  £ • ß 
-
-### FILE: ./microservicio-cuentas/target/classes/application.properties
-
-spring.application.name=microservicio-cuentas
-server.port=8081
-spring.datasource.url=jdbc:mysql://mysql:3306/banco
-spring.datasource.username=root
-spring.datasource.password=root
-spring.jpa.hibernate.ddl-auto=update
-spring.rabbitmq.host=rabbitmq
-spring.rabbitmq.port=5672
-spring.rabbitmq.username=guest
-spring.rabbitmq.password=guest
-spring.cloud.stream.bindings.output.destination=cuenta-events
-spring.datasource.hikari.connection-timeout=20000
-spring.datasource.hikari.initialization-fail-timeout=-1
-spring.rabbitmq.template.retry.enabled=true
-spring.rabbitmq.template.retry.max-attempts=5
-spring.rabbitmq.template.retry.initial-interval=5000
-
-### FILE: ./microservicio-cuentas/target/test-classes/com/application/microservicio_cuentas/MicroservicioCuentasApplicationTests.class
-
- ˛∫æ   =   Jcom/application/microservicio_cuentas/MicroservicioCuentasApplicationTests  java/lang/Object <init> ()V Code
-  	   LineNumberTable LocalVariableTable this LLcom/application/microservicio_cuentas/MicroservicioCuentasApplicationTests; contextLoads RuntimeVisibleAnnotations Lorg/junit/jupiter/api/Test; 
-SourceFile )MicroservicioCuentasApplicationTests.java 6Lorg/springframework/boot/test/context/SpringBootTest;                  /     *∑ ±    
-                                    +      ±    
-                                 
-
-### FILE: ./microservicio-cuentas/mvnw
-
-#!/bin/sh
-# ----------------------------------------------------------------------------
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# ----------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------
-# Apache Maven Wrapper startup batch script, version 3.3.2
-#
-# Optional ENV vars
-# -----------------
-#   JAVA_HOME - location of a JDK home dir, required when download maven via java source
-#   MVNW_REPOURL - repo url base for downloading maven distribution
-#   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
-#   MVNW_VERBOSE - true: enable verbose log; debug: trace the mvnw script; others: silence the output
-# ----------------------------------------------------------------------------
-
-set -euf
-[ "${MVNW_VERBOSE-}" != debug ] || set -x
-
-# OS specific support.
-native_path() { printf %s\\n "$1"; }
-case "$(uname)" in
-CYGWIN* | MINGW*)
-  [ -z "${JAVA_HOME-}" ] || JAVA_HOME="$(cygpath --unix "$JAVA_HOME")"
-  native_path() { cygpath --path --windows "$1"; }
-  ;;
-esac
-
-# set JAVACMD and JAVACCMD
-set_java_home() {
-  # For Cygwin and MinGW, ensure paths are in Unix format before anything is touched
-  if [ -n "${JAVA_HOME-}" ]; then
-    if [ -x "$JAVA_HOME/jre/sh/java" ]; then
-      # IBM's JDK on AIX uses strange locations for the executables
-      JAVACMD="$JAVA_HOME/jre/sh/java"
-      JAVACCMD="$JAVA_HOME/jre/sh/javac"
-    else
-      JAVACMD="$JAVA_HOME/bin/java"
-      JAVACCMD="$JAVA_HOME/bin/javac"
-
-      if [ ! -x "$JAVACMD" ] || [ ! -x "$JAVACCMD" ]; then
-        echo "The JAVA_HOME environment variable is not defined correctly, so mvnw cannot run." >&2
-        echo "JAVA_HOME is set to \"$JAVA_HOME\", but \"\$JAVA_HOME/bin/java\" or \"\$JAVA_HOME/bin/javac\" does not exist." >&2
-        return 1
-      fi
-    fi
-  else
-    JAVACMD="$(
-      'set' +e
-      'unset' -f command 2>/dev/null
-      'command' -v java
-    )" || :
-    JAVACCMD="$(
-      'set' +e
-      'unset' -f command 2>/dev/null
-      'command' -v javac
-    )" || :
-
-    if [ ! -x "${JAVACMD-}" ] || [ ! -x "${JAVACCMD-}" ]; then
-      echo "The java/javac command does not exist in PATH nor is JAVA_HOME set, so mvnw cannot run." >&2
-      return 1
-    fi
-  fi
-}
-
-# hash string like Java String::hashCode
-hash_string() {
-  str="${1:-}" h=0
-  while [ -n "$str" ]; do
-    char="${str%"${str#?}"}"
-    h=$(((h * 31 + $(LC_CTYPE=C printf %d "'$char")) % 4294967296))
-    str="${str#?}"
-  done
-  printf %x\\n $h
-}
-
-verbose() { :; }
-[ "${MVNW_VERBOSE-}" != true ] || verbose() { printf %s\\n "${1-}"; }
-
-die() {
-  printf %s\\n "$1" >&2
-  exit 1
-}
-
-trim() {
-  # MWRAPPER-139:
-  #   Trims trailing and leading whitespace, carriage returns, tabs, and linefeeds.
-  #   Needed for removing poorly interpreted newline sequences when running in more
-  #   exotic environments such as mingw bash on Windows.
-  printf "%s" "${1}" | tr -d '[:space:]'
-}
-
-# parse distributionUrl and optional distributionSha256Sum, requires .mvn/wrapper/maven-wrapper.properties
-while IFS="=" read -r key value; do
-  case "${key-}" in
-  distributionUrl) distributionUrl=$(trim "${value-}") ;;
-  distributionSha256Sum) distributionSha256Sum=$(trim "${value-}") ;;
-  esac
-done <"${0%/*}/.mvn/wrapper/maven-wrapper.properties"
-[ -n "${distributionUrl-}" ] || die "cannot read distributionUrl property in ${0%/*}/.mvn/wrapper/maven-wrapper.properties"
-
-case "${distributionUrl##*/}" in
-maven-mvnd-*bin.*)
-  MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/
-  case "${PROCESSOR_ARCHITECTURE-}${PROCESSOR_ARCHITEW6432-}:$(uname -a)" in
-  *AMD64:CYGWIN* | *AMD64:MINGW*) distributionPlatform=windows-amd64 ;;
-  :Darwin*x86_64) distributionPlatform=darwin-amd64 ;;
-  :Darwin*arm64) distributionPlatform=darwin-aarch64 ;;
-  :Linux*x86_64*) distributionPlatform=linux-amd64 ;;
-  *)
-    echo "Cannot detect native platform for mvnd on $(uname)-$(uname -m), use pure java version" >&2
-    distributionPlatform=linux-amd64
-    ;;
-  esac
-  distributionUrl="${distributionUrl%-bin.*}-$distributionPlatform.zip"
-  ;;
-maven-mvnd-*) MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/ ;;
-*) MVN_CMD="mvn${0##*/mvnw}" _MVNW_REPO_PATTERN=/org/apache/maven/ ;;
-esac
-
-# apply MVNW_REPOURL and calculate MAVEN_HOME
-# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
-[ -z "${MVNW_REPOURL-}" ] || distributionUrl="$MVNW_REPOURL$_MVNW_REPO_PATTERN${distributionUrl#*"$_MVNW_REPO_PATTERN"}"
-distributionUrlName="${distributionUrl##*/}"
-distributionUrlNameMain="${distributionUrlName%.*}"
-distributionUrlNameMain="${distributionUrlNameMain%-bin}"
-MAVEN_USER_HOME="${MAVEN_USER_HOME:-${HOME}/.m2}"
-MAVEN_HOME="${MAVEN_USER_HOME}/wrapper/dists/${distributionUrlNameMain-}/$(hash_string "$distributionUrl")"
-
-exec_maven() {
-  unset MVNW_VERBOSE MVNW_USERNAME MVNW_PASSWORD MVNW_REPOURL || :
-  exec "$MAVEN_HOME/bin/$MVN_CMD" "$@" || die "cannot exec $MAVEN_HOME/bin/$MVN_CMD"
-}
-
-if [ -d "$MAVEN_HOME" ]; then
-  verbose "found existing MAVEN_HOME at $MAVEN_HOME"
-  exec_maven "$@"
-fi
-
-case "${distributionUrl-}" in
-*?-bin.zip | *?maven-mvnd-?*-?*.zip) ;;
-*) die "distributionUrl is not valid, must match *-bin.zip or maven-mvnd-*.zip, but found '${distributionUrl-}'" ;;
-esac
-
-# prepare tmp dir
-if TMP_DOWNLOAD_DIR="$(mktemp -d)" && [ -d "$TMP_DOWNLOAD_DIR" ]; then
-  clean() { rm -rf -- "$TMP_DOWNLOAD_DIR"; }
-  trap clean HUP INT TERM EXIT
-else
-  die "cannot create temp dir"
-fi
-
-mkdir -p -- "${MAVEN_HOME%/*}"
-
-# Download and Install Apache Maven
-verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
-verbose "Downloading from: $distributionUrl"
-verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
-
-# select .zip or .tar.gz
-if ! command -v unzip >/dev/null; then
-  distributionUrl="${distributionUrl%.zip}.tar.gz"
-  distributionUrlName="${distributionUrl##*/}"
-fi
-
-# verbose opt
-__MVNW_QUIET_WGET=--quiet __MVNW_QUIET_CURL=--silent __MVNW_QUIET_UNZIP=-q __MVNW_QUIET_TAR=''
-[ "${MVNW_VERBOSE-}" != true ] || __MVNW_QUIET_WGET='' __MVNW_QUIET_CURL='' __MVNW_QUIET_UNZIP='' __MVNW_QUIET_TAR=v
-
-# normalize http auth
-case "${MVNW_PASSWORD:+has-password}" in
-'') MVNW_USERNAME='' MVNW_PASSWORD='' ;;
-has-password) [ -n "${MVNW_USERNAME-}" ] || MVNW_USERNAME='' MVNW_PASSWORD='' ;;
-esac
-
-if [ -z "${MVNW_USERNAME-}" ] && command -v wget >/dev/null; then
-  verbose "Found wget ... using wget"
-  wget ${__MVNW_QUIET_WGET:+"$__MVNW_QUIET_WGET"} "$distributionUrl" -O "$TMP_DOWNLOAD_DIR/$distributionUrlName" || die "wget: Failed to fetch $distributionUrl"
-elif [ -z "${MVNW_USERNAME-}" ] && command -v curl >/dev/null; then
-  verbose "Found curl ... using curl"
-  curl ${__MVNW_QUIET_CURL:+"$__MVNW_QUIET_CURL"} -f -L -o "$TMP_DOWNLOAD_DIR/$distributionUrlName" "$distributionUrl" || die "curl: Failed to fetch $distributionUrl"
-elif set_java_home; then
-  verbose "Falling back to use Java to download"
-  javaSource="$TMP_DOWNLOAD_DIR/Downloader.java"
-  targetZip="$TMP_DOWNLOAD_DIR/$distributionUrlName"
-  cat >"$javaSource" <<-END
-	public class Downloader extends java.net.Authenticator
-	{
-	  protected java.net.PasswordAuthentication getPasswordAuthentication()
-	  {
-	    return new java.net.PasswordAuthentication( System.getenv( "MVNW_USERNAME" ), System.getenv( "MVNW_PASSWORD" ).toCharArray() );
-	  }
-	  public static void main( String[] args ) throws Exception
-	  {
-	    setDefault( new Downloader() );
-	    java.nio.file.Files.copy( java.net.URI.create( args[0] ).toURL().openStream(), java.nio.file.Paths.get( args[1] ).toAbsolutePath().normalize() );
-	  }
-	}
-	END
-  # For Cygwin/MinGW, switch paths to Windows format before running javac and java
-  verbose " - Compiling Downloader.java ..."
-  "$(native_path "$JAVACCMD")" "$(native_path "$javaSource")" || die "Failed to compile Downloader.java"
-  verbose " - Running Downloader.java ..."
-  "$(native_path "$JAVACMD")" -cp "$(native_path "$TMP_DOWNLOAD_DIR")" Downloader "$distributionUrl" "$(native_path "$targetZip")"
-fi
-
-# If specified, validate the SHA-256 sum of the Maven distribution zip file
-if [ -n "${distributionSha256Sum-}" ]; then
-  distributionSha256Result=false
-  if [ "$MVN_CMD" = mvnd.sh ]; then
-    echo "Checksum validation is not supported for maven-mvnd." >&2
-    echo "Please disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
-    exit 1
-  elif command -v sha256sum >/dev/null; then
-    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | sha256sum -c >/dev/null 2>&1; then
-      distributionSha256Result=true
-    fi
-  elif command -v shasum >/dev/null; then
-    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | shasum -a 256 -c >/dev/null 2>&1; then
-      distributionSha256Result=true
-    fi
-  else
-    echo "Checksum validation was requested but neither 'sha256sum' or 'shasum' are available." >&2
-    echo "Please install either command, or disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
-    exit 1
-  fi
-  if [ $distributionSha256Result = false ]; then
-    echo "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised." >&2
-    echo "If you updated your Maven version, you need to update the specified distributionSha256Sum property." >&2
-    exit 1
-  fi
-fi
-
-# unzip and move
-if command -v unzip >/dev/null; then
-  unzip ${__MVNW_QUIET_UNZIP:+"$__MVNW_QUIET_UNZIP"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -d "$TMP_DOWNLOAD_DIR" || die "failed to unzip"
-else
-  tar xzf${__MVNW_QUIET_TAR:+"$__MVNW_QUIET_TAR"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -C "$TMP_DOWNLOAD_DIR" || die "failed to untar"
-fi
-printf %s\\n "$distributionUrl" >"$TMP_DOWNLOAD_DIR/$distributionUrlNameMain/mvnw.url"
-mv -- "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" "$MAVEN_HOME" || [ -d "$MAVEN_HOME" ] || die "fail to move MAVEN_HOME"
-
-clean || :
-exec_maven "$@"
-
-
-### FILE: ./microservicio-clientes/.gitattributes
-
-/mvnw text eol=lf
-*.cmd text eol=crlf
-
-
-### FILE: ./microservicio-clientes/.gitignore
-
-HELP.md
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/repository/ClienteRepository.java
-
-package com.application.microservicio_clientes.repository;
-
-import com.application.microservicio_clientes.model.Cliente;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface ClienteRepository extends JpaRepository<Cliente, String> {}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/repository/MovimientoRepository.java
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/repository/CuentaRepository.java
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface CuentaRepository extends JpaRepository<Cuenta, String> {}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/repository/PersonaRepository.java
-
-package com.application.microservicio_clientes.repository;
-
-import com.application.microservicio_clientes.model.Persona;
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface PersonaRepository extends JpaRepository<Persona, String> {}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/MicroservicioClientesApplication.java
-
-package com.application.microservicio_clientes;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class MicroservicioClientesApplication {
-
-    public static void main(String[] args) {
-        SpringApplication.run(MicroservicioClientesApplication.class, args);
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/MessageListener.java
-
-package com.application.microservicio_clientes;
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.stereotype.Component;
-
-import java.util.function.Consumer;
-
-@Component
-public class MessageListener {
-
-    @Bean
-    public Consumer<String> input() {
-        return message -> System.out.println("Mensaje recibido desde cuentas: " + message);
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/model/Cuenta.java
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-
-@Entity
-public class Cuenta {
-    @Id
-    private String numeroCuenta; // Clave √∫nica
-    private String tipoCuenta;
-    private double saldoInicial;
-    private boolean estado;
-    private String cliente; // Relaci√≥n con Cliente
-
-    // Getters y Setters
-    public String getNumeroCuenta() { return numeroCuenta; }
-    public void setNumeroCuenta(String numeroCuenta) { this.numeroCuenta = numeroCuenta; }
-    public String getTipoCuenta() { return tipoCuenta; }
-    public void setTipoCuenta(String tipoCuenta) { this.tipoCuenta = tipoCuenta; }
-    public double getSaldoInicial() { return saldoInicial; }
-    public void setSaldoInicial(double saldoInicial) { this.saldoInicial = saldoInicial; }
-    public boolean isEstado() { return estado; }
-    public void setEstado(boolean estado) { this.estado = estado; }
-    public String getCliente() { return cliente; }
-    public void setCliente(String cliente) { this.cliente = cliente; }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/model/Movimiento.java
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import java.util.Date;
-
-@Entity
-public class Movimiento {
-    @Id
-    private Long id; // Clave √∫nica generada autom√°ticamente
-    private Date fecha;
-    private String tipoMovimiento;
-    private double valor;
-    private double saldo;
-    private String numeroCuenta; // Relaci√≥n con Cuenta
-
-    // Getters y Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Date getFecha() { return fecha; }
-    public void setFecha(Date fecha) { this.fecha = fecha; }
-    public String getTipoMovimiento() { return tipoMovimiento; }
-    public void setTipoMovimiento(String tipoMovimiento) { this.tipoMovimiento = tipoMovimiento; }
-    public double getValor() { return valor; }
-    public void setValor(double valor) { this.valor = valor; }
-    public double getSaldo() { return saldo; }
-    public void setSaldo(double saldo) { this.saldo = saldo; }
-    public String getNumeroCuenta() { return numeroCuenta; }
-    public void setNumeroCuenta(String numeroCuenta) { this.numeroCuenta = numeroCuenta; }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/model/Cliente.java
-
-package com.application.microservicio_clientes.model;
-
-import jakarta.persistence.Entity;
-
-@Entity
-public class Cliente extends Persona {
-    private String clienteId;
-    private String contrasena;
-    private boolean estado;
-
-    // Constructor vac√≠o
-    public Cliente() {}
-
-    // Getters y Setters
-    public String getClienteId() { return clienteId; }
-    public void setClienteId(String clienteId) { this.clienteId = clienteId; }
-    public String getContrasena() { return contrasena; }
-    public void setContrasena(String contrasena) { this.contrasena = contrasena; }
-    public boolean isEstado() { return estado; }
-    public void setEstado(boolean estado) { this.estado = estado; }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/model/Persona.java
-
-package com.application.microservicio_clientes.model;
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-
-@Entity
-public class Persona {
-    @Id
-    private String identificacion;
-    private String nombre;
-    private String genero;
-    private int edad;
-    private String direccion;
-    private String telefono;
-
-    // Constructor vac√≠o
-    public Persona() {}
-
-    // Getters y Setters
-    public String getIdentificacion() { return identificacion; }
-    public void setIdentificacion(String identificacion) { this.identificacion = identificacion; }
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-    public String getGenero() { return genero; }
-    public void setGenero(String genero) { this.genero = genero; }
-    public int getEdad() { return edad; }
-    public void setEdad(int edad) { this.edad = edad; }
-    public String getDireccion() { return direccion; }
-    public void setDireccion(String direccion) { this.direccion = direccion; }
-    public String getTelefono() { return telefono; }
-    public void setTelefono(String telefono) { this.telefono = telefono; }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/service/MovimientoService.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-@Service
-public class MovimientoService {
-    @Autowired
-    private MovimientoRepository movimientoRepository;
-    @Autowired
-    private CuentaRepository cuentaRepository;
-
-    public Movimiento registrarMovimiento(Movimiento movimiento) {
-        Cuenta cuenta = cuentaRepository.findById(movimiento.getNumeroCuenta()).orElseThrow();
-        double nuevoSaldo = cuenta.getSaldoInicial() + movimiento.getValor();
-        if (nuevoSaldo < 0) {
-            throw new RuntimeException("Saldo no disponible");
-        }
-        cuenta.setSaldoInicial(nuevoSaldo);
-        movimiento.setSaldo(nuevoSaldo);
-        cuentaRepository.save(cuenta);
-        return movimientoRepository.save(movimiento);
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/service/ClienteService.java
-
-package com.application.microservicio_clientes.service;
-
-import com.application.microservicio_clientes.model.Cliente;
-import com.application.microservicio_clientes.repository.ClienteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.util.List;
-
-@Service
-public class ClienteService {
-    private final ClienteRepository clienteRepository;
-
-    @Autowired
-    public ClienteService(ClienteRepository clienteRepository) {
-        this.clienteRepository = clienteRepository;
-    }
-
-    public List<Cliente> getAllClientes() {
-        return clienteRepository.findAll();
-    }
-
-    public Cliente saveCliente(Cliente cliente) {
-        return clienteRepository.save(cliente);
-    }
-
-    public Cliente updateCliente(String identificacion, Cliente cliente) {
-        Cliente existingCliente = clienteRepository.findById(identificacion)
-                .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
-        existingCliente.setClienteId(cliente.getClienteId());
-        existingCliente.setContrasena(cliente.getContrasena());
-        existingCliente.setEstado(cliente.isEstado());
-        existingCliente.setNombre(cliente.getNombre());
-        existingCliente.setGenero(cliente.getGenero());
-        existingCliente.setEdad(cliente.getEdad());
-        existingCliente.setDireccion(cliente.getDireccion());
-        existingCliente.setTelefono(cliente.getTelefono());
-        return clienteRepository.save(existingCliente);
-    }
-
-    public void deleteCliente(String identificacion) {
-        clienteRepository.deleteById(identificacion);
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/service/CuentaService.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import java.util.List;
-
-@Service
-public class CuentaService {
-    @Autowired
-    private CuentaRepository cuentaRepository;
-
-    public List<Cuenta> getAllCuentas() {
-        return cuentaRepository.findAll();
-    }
-
-    public Cuenta saveCuenta(Cuenta cuenta) {
-        return cuentaRepository.save(cuenta);
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/controller/ClienteController.java
-
-package com.application.microservicio_clientes.controller;
-
-import com.application.microservicio_clientes.model.Cliente;
-import com.application.microservicio_clientes.service.ClienteService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/clientes")
-public class ClienteController {
-    @Autowired
-    private ClienteService clienteService;
-
-    @GetMapping
-    public List<Cliente> getAllClientes() {
-        return clienteService.getAllClientes();
-    }
-
-    @PostMapping
-    public Cliente createCliente(@RequestBody Cliente cliente) {
-        return clienteService.saveCliente(cliente);
-    }
-
-    @PutMapping("/{identificacion}")
-    public ResponseEntity<Cliente> updateCliente(@PathVariable String identificacion, @RequestBody Cliente cliente) {
-        Cliente updatedCliente = clienteService.updateCliente(identificacion, cliente);
-        return ResponseEntity.ok(updatedCliente);
-    }
-
-    @DeleteMapping("/{identificacion}")
-    public ResponseEntity<Void> deleteCliente(@PathVariable String identificacion) {
-        clienteService.deleteCliente(identificacion);
-        return ResponseEntity.noContent().build();
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/controller/MovimientoController.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api/movimientos")
-public class MovimientoController {
-    @Autowired
-    private MovimientoService movimientoService;
-
-    @PostMapping
-    public Movimiento registrarMovimiento(@RequestBody Movimiento movimiento) {
-        return movimientoService.registrarMovimiento(movimiento);
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/java/com/application/microservicio_clientes/controller/CuentaController.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/cuentas")
-public class CuentaController {
-    @Autowired
-    private CuentaService cuentaService;
-
-    @GetMapping
-    public List<Cuenta> getAllCuentas() {
-        return cuentaService.getAllCuentas();
-    }
-
-    @PostMapping
-    public Cuenta createCuenta(@RequestBody Cuenta cuenta) {
-        return cuentaService.saveCuenta(cuenta);
-    }
-}
-
-### FILE: ./microservicio-clientes/src/main/resources/application.properties
-
-spring.application.name=microservicio-clientes
-server.port=8080
-spring.datasource.url=jdbc:mysql://mysql:3306/banco
-spring.datasource.username=root
-spring.datasource.password=root
-spring.jpa.hibernate.ddl-auto=update
-spring.rabbitmq.host=rabbit
-spring.rabbitmq.port=5672
-spring.rabbitmq.username=guest
-spring.rabbitmq.password=guest
-spring.cloud.stream.bindings.input.destination=cuenta-events
-spring.datasource.hikari.connection-timeout=20000
-spring.datasource.hikari.initialization-fail-timeout=-1
-spring.rabbitmq.template.retry.enabled=true
-spring.rabbitmq.template.retry.max-attempts=5
-spring.rabbitmq.template.retry.initial-interval=5000
-
-### FILE: ./microservicio-clientes/src/test/java/com/application/microservicio_cliente/MicroservicioClienteApplicationTests.java
-
-package com.application.microservicio_cliente;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-
-@SpringBootTest
-class MicroservicioClienteApplicationTests {
-
-	@Test
-	void contextLoads() {
-	}
-
-}
-
-
-### FILE: ./microservicio-clientes/Dockerfile
-
-# Etapa de construcci√≥n
-FROM eclipse-temurin:17-jdk AS build
-WORKDIR /app
-COPY mvnw .
-COPY .mvn .mvn
-COPY pom.xml .
-COPY src src
-RUN ./mvnw clean package -DskipTests
-
-# Etapa de ejecuci√≥n
-FROM eclipse-temurin:17-jre
-WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
-CMD ["java", "-jar", "app.jar"]
-
-### FILE: ./microservicio-clientes/HELP.md
-
-# Read Me First
-The following was discovered as part of building this project:
-
-* The original package name 'com.application.microservicio-cliente' is invalid and this project uses 'com.application.microservicio_cliente' instead.
-
-# Getting Started
-
-### Reference Documentation
-For further reference, please consider the following sections:
-
-* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
-* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/3.4.3/maven-plugin)
-* [Create an OCI image](https://docs.spring.io/spring-boot/3.4.3/maven-plugin/build-image.html)
-
-### Maven Parent overrides
-
-Due to Maven's design, elements are inherited from the parent POM to the project POM.
-While most of the inheritance is fine, it also inherits unwanted elements like `<license>` and `<developers>` from the parent.
-To prevent this, the project POM contains empty overrides for these elements.
-If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
-
-
-
-### FILE: ./microservicio-clientes/pom.xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.3</version>
-        <relativePath/>
-    </parent>
-    <groupId>com.application</groupId>
-    <artifactId>microservicio-clientes</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <name>microservicio-clientes</name>
-    <description>Microservicio para gestionar clientes</description>
-    <properties>
-        <java.version>17</java.version>
-    </properties>
-    <dependencies>
-        <!-- Core Spring Boot dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- RabbitMQ and Spring AMQP -->
-        <dependency>
-            <groupId>org.springframework.amqp</groupId>
-            <artifactId>spring-amqp</artifactId>
-            <!-- No version needed; managed by spring-boot-starter-parent -->
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
-        </dependency>
-
-        <!-- Test dependencies -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.cloud</groupId>
-                <artifactId>spring-cloud-dependencies</artifactId>
-                <version>2024.0.0</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </plugin>
-        </plugins>
-    </build>
-</project>
-
-### FILE: ./microservicio-clientes/mvnw.cmd
-
-<# : batch portion
-@REM ----------------------------------------------------------------------------
-@REM Licensed to the Apache Software Foundation (ASF) under one
-@REM or more contributor license agreements.  See the NOTICE file
-@REM distributed with this work for additional information
-@REM regarding copyright ownership.  The ASF licenses this file
-@REM to you under the Apache License, Version 2.0 (the
-@REM "License"); you may not use this file except in compliance
-@REM with the License.  You may obtain a copy of the License at
-@REM
-@REM    http://www.apache.org/licenses/LICENSE-2.0
-@REM
-@REM Unless required by applicable law or agreed to in writing,
-@REM software distributed under the License is distributed on an
-@REM "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-@REM KIND, either express or implied.  See the License for the
-@REM specific language governing permissions and limitations
-@REM under the License.
-@REM ----------------------------------------------------------------------------
-
-@REM ----------------------------------------------------------------------------
-@REM Apache Maven Wrapper startup batch script, version 3.3.2
-@REM
-@REM Optional ENV vars
-@REM   MVNW_REPOURL - repo url base for downloading maven distribution
-@REM   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
-@REM   MVNW_VERBOSE - true: enable verbose log; others: silence the output
-@REM ----------------------------------------------------------------------------
-
-@IF "%__MVNW_ARG0_NAME__%"=="" (SET __MVNW_ARG0_NAME__=%~nx0)
-@SET __MVNW_CMD__=
-@SET __MVNW_ERROR__=
-@SET __MVNW_PSMODULEP_SAVE=%PSModulePath%
-@SET PSModulePath=
-@FOR /F "usebackq tokens=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir='%~dp0'; $script='%__MVNW_ARG0_NAME__%'; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw '%~f0'))) -NoNewScope}"`) DO @(
-  IF "%%A"=="MVN_CMD" (set __MVNW_CMD__=%%B) ELSE IF "%%B"=="" (echo %%A) ELSE (echo %%A=%%B)
-)
-@SET PSModulePath=%__MVNW_PSMODULEP_SAVE%
-@SET __MVNW_PSMODULEP_SAVE=
-@SET __MVNW_ARG0_NAME__=
-@SET MVNW_USERNAME=
-@SET MVNW_PASSWORD=
-@IF NOT "%__MVNW_CMD__%"=="" (%__MVNW_CMD__% %*)
-@echo Cannot start maven from wrapper >&2 && exit /b 1
-@GOTO :EOF
-: end batch / begin powershell #>
-
-$ErrorActionPreference = "Stop"
-if ($env:MVNW_VERBOSE -eq "true") {
-  $VerbosePreference = "Continue"
-}
-
-# calculate distributionUrl, requires .mvn/wrapper/maven-wrapper.properties
-$distributionUrl = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionUrl
-if (!$distributionUrl) {
-  Write-Error "cannot read distributionUrl property in $scriptDir/.mvn/wrapper/maven-wrapper.properties"
-}
-
-switch -wildcard -casesensitive ( $($distributionUrl -replace '^.*/','') ) {
-  "maven-mvnd-*" {
-    $USE_MVND = $true
-    $distributionUrl = $distributionUrl -replace '-bin\.[^.]*$',"-windows-amd64.zip"
-    $MVN_CMD = "mvnd.cmd"
-    break
-  }
-  default {
-    $USE_MVND = $false
-    $MVN_CMD = $script -replace '^mvnw','mvn'
-    break
-  }
-}
-
-# apply MVNW_REPOURL and calculate MAVEN_HOME
-# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
-if ($env:MVNW_REPOURL) {
-  $MVNW_REPO_PATTERN = if ($USE_MVND) { "/org/apache/maven/" } else { "/maven/mvnd/" }
-  $distributionUrl = "$env:MVNW_REPOURL$MVNW_REPO_PATTERN$($distributionUrl -replace '^.*'+$MVNW_REPO_PATTERN,'')"
-}
-$distributionUrlName = $distributionUrl -replace '^.*/',''
-$distributionUrlNameMain = $distributionUrlName -replace '\.[^.]*$','' -replace '-bin$',''
-$MAVEN_HOME_PARENT = "$HOME/.m2/wrapper/dists/$distributionUrlNameMain"
-if ($env:MAVEN_USER_HOME) {
-  $MAVEN_HOME_PARENT = "$env:MAVEN_USER_HOME/wrapper/dists/$distributionUrlNameMain"
-}
-$MAVEN_HOME_NAME = ([System.Security.Cryptography.MD5]::Create().ComputeHash([byte[]][char[]]$distributionUrl) | ForEach-Object {$_.ToString("x2")}) -join ''
-$MAVEN_HOME = "$MAVEN_HOME_PARENT/$MAVEN_HOME_NAME"
-
-if (Test-Path -Path "$MAVEN_HOME" -PathType Container) {
-  Write-Verbose "found existing MAVEN_HOME at $MAVEN_HOME"
-  Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
-  exit $?
-}
-
-if (! $distributionUrlNameMain -or ($distributionUrlName -eq $distributionUrlNameMain)) {
-  Write-Error "distributionUrl is not valid, must end with *-bin.zip, but found $distributionUrl"
-}
-
-# prepare tmp dir
-$TMP_DOWNLOAD_DIR_HOLDER = New-TemporaryFile
-$TMP_DOWNLOAD_DIR = New-Item -Itemtype Directory -Path "$TMP_DOWNLOAD_DIR_HOLDER.dir"
-$TMP_DOWNLOAD_DIR_HOLDER.Delete() | Out-Null
-trap {
-  if ($TMP_DOWNLOAD_DIR.Exists) {
-    try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
-    catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
-  }
-}
-
-New-Item -Itemtype Directory -Path "$MAVEN_HOME_PARENT" -Force | Out-Null
-
-# Download and Install Apache Maven
-Write-Verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
-Write-Verbose "Downloading from: $distributionUrl"
-Write-Verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
-
-$webclient = New-Object System.Net.WebClient
-if ($env:MVNW_USERNAME -and $env:MVNW_PASSWORD) {
-  $webclient.Credentials = New-Object System.Net.NetworkCredential($env:MVNW_USERNAME, $env:MVNW_PASSWORD)
-}
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$webclient.DownloadFile($distributionUrl, "$TMP_DOWNLOAD_DIR/$distributionUrlName") | Out-Null
-
-# If specified, validate the SHA-256 sum of the Maven distribution zip file
-$distributionSha256Sum = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionSha256Sum
-if ($distributionSha256Sum) {
-  if ($USE_MVND) {
-    Write-Error "Checksum validation is not supported for maven-mvnd. `nPlease disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties."
-  }
-  Import-Module $PSHOME\Modules\Microsoft.PowerShell.Utility -Function Get-FileHash
-  if ((Get-FileHash "$TMP_DOWNLOAD_DIR/$distributionUrlName" -Algorithm SHA256).Hash.ToLower() -ne $distributionSha256Sum) {
-    Write-Error "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised. If you updated your Maven version, you need to update the specified distributionSha256Sum property."
-  }
-}
-
-# unzip and move
-Expand-Archive "$TMP_DOWNLOAD_DIR/$distributionUrlName" -DestinationPath "$TMP_DOWNLOAD_DIR" | Out-Null
-Rename-Item -Path "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" -NewName $MAVEN_HOME_NAME | Out-Null
-try {
-  Move-Item -Path "$TMP_DOWNLOAD_DIR/$MAVEN_HOME_NAME" -Destination $MAVEN_HOME_PARENT | Out-Null
-} catch {
-  if (! (Test-Path -Path "$MAVEN_HOME" -PathType Container)) {
-    Write-Error "fail to move MAVEN_HOME"
-  }
-} finally {
-  try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
-  catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
-}
-
-Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
-
-
-### FILE: ./microservicio-clientes/.mvn/wrapper/maven-wrapper.properties
-
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-wrapperVersion=3.3.2
-distributionType=only-script
-distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip
-
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/repository/ClienteRepository.class
-
- ˛∫æ   =   Ccom/application/microservicio_clientes/repository/ClienteRepository  java/lang/Object  5org/springframework/data/jpa/repository/JpaRepository 
-SourceFile ClienteRepository.java 	Signature ìLjava/lang/Object;Lorg/springframework/data/jpa/repository/JpaRepository<Lcom/application/microservicio_clientes/model/Cliente;Ljava/lang/String;>;               	    
-
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/repository/MovimientoRepository.class
-
- ˛∫æ   = 	  Fcom/application/microservicio_clientes/repository/MovimientoRepository  java/lang/Object 
-SourceFile MovimientoRepository.java 	Signature gLjava/lang/Object;Lorg/springframework/data/jpa/repository/JpaRepository<LMovimiento;Ljava/lang/Long;>;                   
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/repository/PersonaRepository.class
-
- ˛∫æ   =   Ccom/application/microservicio_clientes/repository/PersonaRepository  java/lang/Object  5org/springframework/data/jpa/repository/JpaRepository 
-SourceFile PersonaRepository.java 	Signature ìLjava/lang/Object;Lorg/springframework/data/jpa/repository/JpaRepository<Lcom/application/microservicio_clientes/model/Persona;Ljava/lang/String;>;               	    
-
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/repository/CuentaRepository.class
-
- ˛∫æ   = 	  Bcom/application/microservicio_clientes/repository/CuentaRepository  java/lang/Object 
-SourceFile CuentaRepository.java 	Signature eLjava/lang/Object;Lorg/springframework/data/jpa/repository/JpaRepository<LCuenta;Ljava/lang/String;>;                   
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/model/Persona.class
-
- ˛∫æ   = 8  4com/application/microservicio_clientes/model/Persona  java/lang/Object identificacion Ljava/lang/String; RuntimeVisibleAnnotations Ljakarta/persistence/Id; nombre genero edad I 	direccion telefono <init> ()V Code
-     LineNumberTable LocalVariableTable this 6Lcom/application/microservicio_clientes/model/Persona; getIdentificacion ()Ljava/lang/String;	     setIdentificacion (Ljava/lang/String;)V MethodParameters 	getNombre	  ! 	  	setNombre 	getGenero	  % 
-  	setGenero getEdad ()I	  *   setEdad (I)V getDireccion	  /   setDireccion getTelefono	  3   setTelefono 
-SourceFile Persona.java Ljakarta/persistence/Entity; !                   	     
-                           /     *∑ ±                               /     *¥ ∞                               :     *+µ ±                                            /     *¥  ∞                         "      :     *+µ  ±                           	       	    #      /     *¥ $∞                         &      :     *+µ $±                           
-       
-    ' (     /     *¥ )¨                         + ,     :     *µ )±                                      -      /     *¥ .∞                         0      :     *+µ .±                                      1      /     *¥ 2∞                         4      :     *+µ 2±                                      5    6      7  
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/model/Cliente.class
-
- ˛∫æ   = (  4com/application/microservicio_clientes/model/Cliente  4com/application/microservicio_clientes/model/Persona 	clienteId Ljava/lang/String; 
-contrasena estado Z <init> ()V Code
-   
-  LineNumberTable LocalVariableTable this 6Lcom/application/microservicio_clientes/model/Cliente; getClienteId ()Ljava/lang/String;	     setClienteId (Ljava/lang/String;)V MethodParameters getContrasena	     setContrasena isEstado ()Z	  !  	 	setEstado (Z)V 
-SourceFile Cliente.java RuntimeVisibleAnnotations Ljakarta/persistence/Entity; !                  	     
-      /     *∑ ±                               /     *¥ ∞                               :     *+µ ±                                            /     *¥ ∞                               :     *+µ ±                                            /     *¥  ¨                         " #     :     *µ  ±                            	          $    % &     '  
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/model/Cuenta.class
-
- ˛∫æ   = 2  3com/application/microservicio_clientes/model/Cuenta  java/lang/Object numeroCuenta Ljava/lang/String; RuntimeVisibleAnnotations Ljakarta/persistence/Id; 
-tipoCuenta saldoInicial D estado Z cliente <init> ()V Code  java/lang/Error  çUnresolved compilation problem: 
-	The declared package "" does not match the expected package "com.application.microservicio_clientes.model"
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this 5Lcom/application/microservicio_clientes/model/Cuenta; getNumeroCuenta ()Ljava/lang/String;   !Unresolved compilation problem: 
- setNumeroCuenta MethodParameters getTipoCuenta setTipoCuenta getSaldoInicial ()D setSaldoInicial (D)V isEstado ()Z 	setEstado (Z)V 
-getCliente 
-setCliente 
-SourceFile Cuenta.java Ljakarta/persistence/Entity; !                   	     
-                      4     
-ª Y∑ ø                   
-            4     
-ª Y∑ ø                   
-      !      4     
-ª Y∑ ø                   
-     "        #      4     
-ª Y∑ ø                   
-      $      4     
-ª Y∑ ø                   
-     "    	    % &     4     
-ª Y∑ ø                   
-      ' (     4     
-ª Y∑ ø                   
-     "    
-    ) *     4     
-ª Y∑ ø                   
-      + ,     4     
-ª Y∑ ø                   
-     "        -      4     
-ª Y∑ ø                   
-      .      4     
-ª Y∑ ø                   
-     "        /    0      1  
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/model/Movimiento.class
-
- ˛∫æ   = 8  7com/application/microservicio_clientes/model/Movimiento  java/lang/Object id Ljava/lang/Long; RuntimeVisibleAnnotations Ljakarta/persistence/Id; fecha Ljava/util/Date; tipoMovimiento Ljava/lang/String; valor D saldo numeroCuenta <init> ()V Code  java/lang/Error  çUnresolved compilation problem: 
-	The declared package "" does not match the expected package "com.application.microservicio_clientes.model"
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this 9Lcom/application/microservicio_clientes/model/Movimiento; getId ()Ljava/lang/Long; " !Unresolved compilation problem: 
- setId (Ljava/lang/Long;)V MethodParameters getFecha ()Ljava/util/Date; setFecha (Ljava/util/Date;)V getTipoMovimiento ()Ljava/lang/String; setTipoMovimiento getValor ()D setValor (D)V getSaldo setSaldo getNumeroCuenta setNumeroCuenta 
-SourceFile Movimiento.java Ljakarta/persistence/Entity; !                   	 
-                               4     
-ª Y∑ ø                   
-             4     
-ª Y!∑ ø                   
-      # $     4     
-ª Y!∑ ø                   
-     %        & '     4     
-ª Y!∑ ø                   
-      ( )     4     
-ª Y!∑ ø                   
-     %    	    * +     4     
-ª Y!∑ ø                   
-      ,      4     
-ª Y!∑ ø                   
-     %        - .     4     
-ª Y!∑ ø                   
-      / 0     4     
-ª Y!∑ ø                   
-     %        1 .     4     
-ª Y!∑ ø                   
-      2 0     4     
-ª Y!∑ ø                   
-     %        3 +     4     
-ª Y!∑ ø                   
-      4      4     
-ª Y!∑ ø                   
-     %        5    6      7  
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/service/ClienteService.class
-
- ˛∫æ   = ñ  =com/application/microservicio_clientes/service/ClienteService  java/lang/Object clienteRepository ELcom/application/microservicio_clientes/repository/ClienteRepository; <init> H(Lcom/application/microservicio_clientes/repository/ClienteRepository;)V RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; Code
-     ()V	     LineNumberTable LocalVariableTable this ?Lcom/application/microservicio_clientes/service/ClienteService; MethodParameters getAllClientes ()Ljava/util/List; 	Signature J()Ljava/util/List<Lcom/application/microservicio_clientes/model/Cliente;>;    Ccom/application/microservicio_clientes/repository/ClienteRepository   findAll saveCliente n(Lcom/application/microservicio_clientes/model/Cliente;)Lcom/application/microservicio_clientes/model/Cliente;  " # $ save &(Ljava/lang/Object;)Ljava/lang/Object; & 4com/application/microservicio_clientes/model/Cliente cliente 6Lcom/application/microservicio_clientes/model/Cliente; updateCliente Ä(Ljava/lang/String;Lcom/application/microservicio_clientes/model/Cliente;)Lcom/application/microservicio_clientes/model/Cliente;  , - . findById ((Ljava/lang/Object;)Ljava/util/Optional;   0 1 2 get ()Ljava/util/function/Supplier;
- 4 6 5 java/util/Optional 7 8 orElseThrow 1(Ljava/util/function/Supplier;)Ljava/lang/Object;
- % : ; < getClienteId ()Ljava/lang/String;
- % > ? @ setClienteId (Ljava/lang/String;)V
- % B C < getContrasena
- % E F @ setContrasena
- % H I J isEstado ()Z
- % L M N 	setEstado (Z)V
- % P Q < 	getNombre
- % S T @ 	setNombre
- % V W < 	getGenero
- % Y Z @ 	setGenero
- % \ ] ^ getEdad ()I
- % ` a b setEdad (I)V
- % d e < getDireccion
- % g h @ setDireccion
- % j k < getTelefono
- % m n @ setTelefono identificacion Ljava/lang/String; existingCliente deleteCliente  t u v 
-deleteById (Ljava/lang/Object;)V lambda$0 ()Ljava/lang/RuntimeException; z java/lang/RuntimeException | Cliente no encontrado
- y ~  @ 
-SourceFile ClienteService.java (Lorg/springframework/stereotype/Service; BootstrapMethods
- Ñ Ü Ö "java/lang/invoke/LambdaMetafactory á à metafactory Ã(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; É ()Ljava/lang/Object; ä
-  ç w x å x InnerClasses í %java/lang/invoke/MethodHandles$Lookup î java/lang/invoke/MethodHandles Lookup !                	     
-      F     
-*∑ *+µ ±              	         
-       
-                       4     
-*¥ π  ∞                   
-             B     *¥ +π ! ¿ %∞                           ' (      '    ) *     ÿ     d*¥ +π + ∫ /  ∂ 3¿ %N-,∂ 9∂ =-,∂ A∂ D-,∂ G∂ K-,∂ O∂ R-,∂ U∂ X-,∂ [∂ _-,∂ c∂ f-,∂ i∂ l*¥ -π ! ¿ %∞       2     
-        &   . ! 6 " > # F $ N % V &    *    d       d o p    d ' (   N q (     	 o   '    r @     C     *¥ +π s ±       
-    * 
- +                o p      o  
- w x     *      
-ª yY{∑ }∞                       Ä 	     Å   Ç     â  ã é è ê   
-  ë ì ï 
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/service/MovimientoService.class
-
- ˛∫æ   = )  @com/application/microservicio_clientes/service/MovimientoService  java/lang/Object movimientoRepository LMovimientoRepository; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; cuentaRepository LCuentaRepository; <init> ()V Code  java/lang/Error ˙Unresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_clientes.service"
-	MovimientoRepository cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	MovimientoRepository cannot be resolved to a type
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this BLcom/application/microservicio_clientes/service/MovimientoService; registrarMovimiento (LMovimiento;)LMovimiento; *Unresolved compilation problems: 
-	Movimiento cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	MovimientoRepository cannot be resolved to a type
- 
-movimiento MethodParameters 
-SourceFile MovimientoService.java (Lorg/springframework/stereotype/Service; # CuentaRepository % 
-Movimiento ' MovimientoRepository MissingTypes !                   	 
-                  4     
-ª Y∑ ø                   
-            4     
-ª Y∑ ø                   
-                        !   (     " $ &
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/service/CuentaService.class
-
- ˛∫æ   = +  <com/application/microservicio_clientes/service/CuentaService  java/lang/Object cuentaRepository LCuentaRepository; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error åUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_clientes.service"
-	CuentaRepository cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this >Lcom/application/microservicio_clientes/service/CuentaService; getAllCuentas ()Ljava/util/List; 	Signature ()Ljava/util/List<LCuenta;>;  vUnresolved compilation problems: 
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
- 
-saveCuenta (LCuenta;)LCuenta;   õUnresolved compilation problems: 
-	Cuenta cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
- cuenta MethodParameters 
-SourceFile CuentaService.java (Lorg/springframework/stereotype/Service; ' Cuenta ) CuentaRepository MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                 4     
-ª Y∑ ø           
-        
-            4     
-ª Y∑ ø                   
-     "    !    #    $      %   *     & (
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/MicroservicioClientesApplication.class
-
- ˛∫æ   =   Gcom/application/microservicio_clientes/MicroservicioClientesApplication  java/lang/Object <init> ()V Code
-  	   LineNumberTable LocalVariableTable this ILcom/application/microservicio_clientes/MicroservicioClientesApplication; main ([Ljava/lang/String;)V
-    *org/springframework/boot/SpringApplication   run b(Ljava/lang/Class;[Ljava/lang/String;)Lorg/springframework/context/ConfigurableApplicationContext; args [Ljava/lang/String; MethodParameters 
-SourceFile %MicroservicioClientesApplication.java RuntimeVisibleAnnotations >Lorg/springframework/boot/autoconfigure/SpringBootApplication; !               /     *∑ ±    
-                    	       6     *∏ W±    
-   
-    
-                                   
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/controller/CuentaController.class
-
- ˛∫æ   = 2  Bcom/application/microservicio_clientes/controller/CuentaController  java/lang/Object cuentaService LCuentaService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error ÜUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_clientes.controller"
-	CuentaService cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this DLcom/application/microservicio_clientes/controller/CuentaController; getAllCuentas ()Ljava/util/List; 	Signature ()Ljava/util/List<LCuenta;>; 4Lorg/springframework/web/bind/annotation/GetMapping;  sUnresolved compilation problems: 
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
- createCuenta (LCuenta;)LCuenta; 5Lorg/springframework/web/bind/annotation/PostMapping; "RuntimeVisibleParameterAnnotations 5Lorg/springframework/web/bind/annotation/RequestBody; $ òUnresolved compilation problems: 
-	Cuenta cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
- cuenta MethodParameters 
-SourceFile CuentaController.java 8Lorg/springframework/web/bind/annotation/RestController; 8Lorg/springframework/web/bind/annotation/RequestMapping; value /api/cuentas . Cuenta 0 CuentaService MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                         4     
-ª Y∑ ø                   
-                  !     "      4     
-ª Y#∑ ø                   
-     &    %    '    (      )   *  +[ s , 1     - /
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/controller/ClienteController.class
-
- ˛∫æ   = S  Ccom/application/microservicio_clientes/controller/ClienteController  java/lang/Object clienteService ?Lcom/application/microservicio_clientes/service/ClienteService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code
-   	 
- LineNumberTable LocalVariableTable this ELcom/application/microservicio_clientes/controller/ClienteController; getAllClientes ()Ljava/util/List; 	Signature J()Ljava/util/List<Lcom/application/microservicio_clientes/model/Cliente;>; 4Lorg/springframework/web/bind/annotation/GetMapping;	    
-    =com/application/microservicio_clientes/service/ClienteService   createCliente n(Lcom/application/microservicio_clientes/model/Cliente;)Lcom/application/microservicio_clientes/model/Cliente; 5Lorg/springframework/web/bind/annotation/PostMapping; "RuntimeVisibleParameterAnnotations 5Lorg/springframework/web/bind/annotation/RequestBody;
-  # $  saveCliente cliente 6Lcom/application/microservicio_clientes/model/Cliente; MethodParameters updateCliente s(Ljava/lang/String;Lcom/application/microservicio_clientes/model/Cliente;)Lorg/springframework/http/ResponseEntity; ´(Ljava/lang/String;Lcom/application/microservicio_clientes/model/Cliente;)Lorg/springframework/http/ResponseEntity<Lcom/application/microservicio_clientes/model/Cliente;>; 4Lorg/springframework/web/bind/annotation/PutMapping; value /{identificacion} 6Lorg/springframework/web/bind/annotation/PathVariable;
-  0 ( 1 Ä(Ljava/lang/String;Lcom/application/microservicio_clientes/model/Cliente;)Lcom/application/microservicio_clientes/model/Cliente;
- 3 5 4 'org/springframework/http/ResponseEntity 6 7 ok =(Ljava/lang/Object;)Lorg/springframework/http/ResponseEntity; identificacion Ljava/lang/String; updatedCliente deleteCliente =(Ljava/lang/String;)Lorg/springframework/http/ResponseEntity; O(Ljava/lang/String;)Lorg/springframework/http/ResponseEntity<Ljava/lang/Void;>; 7Lorg/springframework/web/bind/annotation/DeleteMapping;
-  @ ; A (Ljava/lang/String;)V
- 3 C D E 	noContent :()Lorg/springframework/http/ResponseEntity$HeadersBuilder; G I H 6org/springframework/http/ResponseEntity$HeadersBuilder J K build +()Lorg/springframework/http/ResponseEntity; 
-SourceFile ClienteController.java 8Lorg/springframework/web/bind/annotation/RestController; 8Lorg/springframework/web/bind/annotation/RequestMapping; /api/clientes InnerClasses HeadersBuilder !                    	 
-     /     *∑ ±                                            2     *¥ ∂ ∞                                          !      =     	*¥ +∂ "∞                   	       	 % &  '    %    ( )      *      +  ,[ s -       .    !      [     *¥ +,∂ /N-∏ 2∞       
-     
-     *            8 9     % &  
-  : &  '   	 8   %    ; <      =      >  ,[ s -       .      I     *¥ +∂ ?∏ Bπ F ∞       
-    #  $                8 9  '    8    L    M      N   O  ,[ s P Q   
-  G 3 R	
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/controller/MovimientoController.class
-
- ˛∫æ   = +  Fcom/application/microservicio_clientes/controller/MovimientoController  java/lang/Object movimientoService LMovimientoService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error EUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_clientes.controller"
-	MovimientoService cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	MovimientoService cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this HLcom/application/microservicio_clientes/controller/MovimientoController; registrarMovimiento (LMovimiento;)LMovimiento; 5Lorg/springframework/web/bind/annotation/PostMapping; "RuntimeVisibleParameterAnnotations 5Lorg/springframework/web/bind/annotation/RequestBody;  §Unresolved compilation problems: 
-	Movimiento cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	MovimientoService cannot be resolved to a type
- 
-movimiento MethodParameters 
-SourceFile MovimientoController.java 8Lorg/springframework/web/bind/annotation/RestController; 8Lorg/springframework/web/bind/annotation/RequestMapping; value /api/movimientos ' 
-Movimiento ) MovimientoService MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                            4     
-ª Y∑ ø                   
-                  !      "   #  $[ s % *     & (
-
-### FILE: ./microservicio-clientes/target/classes/com/application/microservicio_clientes/MessageListener.class
-
- ˛∫æ   = I  6com/application/microservicio_clientes/MessageListener  java/lang/Object <init> ()V Code
-  	   LineNumberTable LocalVariableTable this 8Lcom/application/microservicio_clientes/MessageListener; input ()Ljava/util/function/Consumer; 	Signature 3()Ljava/util/function/Consumer<Ljava/lang/String;>; RuntimeVisibleAnnotations -Lorg/springframework/context/annotation/Bean;      accept lambda$0 (Ljava/lang/String;)V	    java/lang/System   out Ljava/io/PrintStream;    ! " makeConcatWithConstants &(Ljava/lang/String;)Ljava/lang/String;
- $ & % java/io/PrintStream '  println message Ljava/lang/String; 
-SourceFile MessageListener.java *Lorg/springframework/stereotype/Component; BootstrapMethods
- / 1 0 "java/lang/invoke/LambdaMetafactory 2 3 metafactory Ã(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodType;Ljava/lang/invoke/MethodHandle;Ljava/lang/invoke/MethodType;)Ljava/lang/invoke/CallSite; . (Ljava/lang/Object;)V 5
-  8   7 
- < > = $java/lang/invoke/StringConcatFactory ! ? ò(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite; ; B !Mensaje recibido desde cuentas:  InnerClasses E %java/lang/invoke/MethodHandles$Lookup G java/lang/invoke/MethodHandles Lookup !               /     *∑ ±    
-       	                                 0     ∫   ∞    
-                   
-       7     ≤ *∫   ∂ #±    
-                ( )    *    +      ,   -     4  6 9 : @  A C   
-  D F H 
-
-### FILE: ./microservicio-clientes/target/classes/application.properties
-
-spring.application.name=microservicio-clientes
-server.port=8080
-spring.datasource.url=jdbc:mysql://mysql:3306/banco
-spring.datasource.username=root
-spring.datasource.password=root
-spring.jpa.hibernate.ddl-auto=update
-spring.rabbitmq.host=rabbit
-spring.rabbitmq.port=5672
-spring.rabbitmq.username=guest
-spring.rabbitmq.password=guest
-spring.cloud.stream.bindings.input.destination=cuenta-events
-
-### FILE: ./microservicio-clientes/target/test-classes/com/application/microservicio_cliente/MicroservicioClienteApplicationTests.class
-
- ˛∫æ   =   Jcom/application/microservicio_cliente/MicroservicioClienteApplicationTests  java/lang/Object <init> ()V Code
-  	   LineNumberTable LocalVariableTable this LLcom/application/microservicio_cliente/MicroservicioClienteApplicationTests; contextLoads RuntimeVisibleAnnotations Lorg/junit/jupiter/api/Test; 
-SourceFile )MicroservicioClienteApplicationTests.java 6Lorg/springframework/boot/test/context/SpringBootTest;                  /     *∑ ±    
-                                    +      ±    
-                                 
-
-### FILE: ./microservicio-clientes/all_files.txt
-
-
-
-### FILE: ./.gitattributes
-
-/mvnw text eol=lf
-*.cmd text eol=crlf
-
-
-### FILE: ./.gitignore
-
-HELP.md
-target/
-!.mvn/wrapper/maven-wrapper.jar
-!**/src/main/**/target/
-!**/src/test/**/target/
-
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-
-### IntelliJ IDEA ###
-.idea
-*.iws
-*.iml
-*.ipr
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-build/
-!**/src/main/**/build/
-!**/src/test/**/build/
-
-### VS Code ###
-.vscode/
-
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/repository/ClienteRepository.java
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface ClienteRepository extends JpaRepository<Cliente, String> {}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/repository/MovimientoRepository.java
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface MovimientoRepository extends JpaRepository<Movimiento, Long> {}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/repository/CuentaRepository.java
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface CuentaRepository extends JpaRepository<Cuenta, String> {}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/repository/PersonaRepository.java
-
-import org.springframework.data.jpa.repository.JpaRepository;
-
-public interface PersonaRepository extends JpaRepository<Persona, Long> {}
-
-// No estoy seguro si es necesario
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/MicroservicioClienteApplication.java
-
-package com.application.microservicio_cliente;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class MicroservicioClienteApplication {
-
-	public static void main(String[] args) {
-		SpringApplication.run(MicroservicioClienteApplication.class, args);
-	}
-
-}
-
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/model/Cuenta.java
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-
-@Entity
-public class Cuenta {
-    @Id
-    private String numeroCuenta; // Clave √∫nica
-    private String tipoCuenta;
-    private double saldoInicial;
-    private boolean estado;
-    private String cliente; // Relaci√≥n con Cliente
-
-    // Getters y Setters
-    public String getNumeroCuenta() { return numeroCuenta; }
-    public void setNumeroCuenta(String numeroCuenta) { this.numeroCuenta = numeroCuenta; }
-    public String getTipoCuenta() { return tipoCuenta; }
-    public void setTipoCuenta(String tipoCuenta) { this.tipoCuenta = tipoCuenta; }
-    public double getSaldoInicial() { return saldoInicial; }
-    public void setSaldoInicial(double saldoInicial) { this.saldoInicial = saldoInicial; }
-    public boolean isEstado() { return estado; }
-    public void setEstado(boolean estado) { this.estado = estado; }
-    public String getCliente() { return cliente; }
-    public void setCliente(String cliente) { this.cliente = cliente; }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/model/Movimiento.java
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import java.util.Date;
-
-@Entity
-public class Movimiento {
-    @Id
-    private Long id; // Clave √∫nica generada autom√°ticamente
-    private Date fecha;
-    private String tipoMovimiento;
-    private double valor;
-    private double saldo;
-    private String numeroCuenta; // Relaci√≥n con Cuenta
-
-    // Getters y Setters
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
-    public Date getFecha() { return fecha; }
-    public void setFecha(Date fecha) { this.fecha = fecha; }
-    public String getTipoMovimiento() { return tipoMovimiento; }
-    public void setTipoMovimiento(String tipoMovimiento) { this.tipoMovimiento = tipoMovimiento; }
-    public double getValor() { return valor; }
-    public void setValor(double valor) { this.valor = valor; }
-    public double getSaldo() { return saldo; }
-    public void setSaldo(double saldo) { this.saldo = saldo; }
-    public String getNumeroCuenta() { return numeroCuenta; }
-    public void setNumeroCuenta(String numeroCuenta) { this.numeroCuenta = numeroCuenta; }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/model/Cliente.java
-
-import jakarta.persistence.Entity;
-
-@Entity
-public class Cliente extends Persona {
-    private String clienteId; // Clave √∫nica
-    private String contrasena;
-    private boolean estado;
-
-    // Getters y Setters
-    public String getClienteId() { return clienteId; }
-    public void setClienteId(String clienteId) { this.clienteId = clienteId; }
-    public String getContrasena() { return contrasena; }
-    public void setContrasena(String contrasena) { this.contrasena = contrasena; }
-    public boolean isEstado() { return estado; }
-    public void setEstado(boolean estado) { this.estado = estado; }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/model/Persona.java
-
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-
-@Entity
-public class Persona {
-    @Id
-    private String identificacion; // Clave primaria
-    private String nombre;
-    private String genero;
-    private int edad;
-    private String direccion;
-    private String telefono;
-
-    // Getters y Setters
-    public String getIdentificacion() { return identificacion; }
-    public void setIdentificacion(String identificacion) { this.identificacion = identificacion; }
-    public String getNombre() { return nombre; }
-    public void setNombre(String nombre) { this.nombre = nombre; }
-    public String getGenero() { return genero; }
-    public void setGenero(String genero) { this.genero = genero; }
-    public int getEdad() { return edad; }
-    public void setEdad(int edad) { this.edad = edad; }
-    public String getDireccion() { return direccion; }
-    public void setDireccion(String direccion) { this.direccion = direccion; }
-    public String getTelefono() { return telefono; }
-    public void setTelefono(String telefono) { this.telefono = telefono; }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/CuentaServiceTest.java
-
-import org.junit.jupiter.api.Test;
-import static org.mockito.Mockito.*;
-import static org.junit.jupiter.api.Assertions.*;
-
-public class CuentaServiceTest {
-    @Test
-    public void testGetAllCuentas() {
-        CuentaRepository mockRepo = mock(CuentaRepository.class);
-        CuentaService service = new CuentaService();
-        service.cuentaRepository = mockRepo;
-        assertNotNull(service.getAllCuentas());
-    }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/service/MovimientoService.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-@Service
-public class MovimientoService {
-    @Autowired
-    private MovimientoRepository movimientoRepository;
-    @Autowired
-    private CuentaRepository cuentaRepository;
-
-    public Movimiento registrarMovimiento(Movimiento movimiento) {
-        Cuenta cuenta = cuentaRepository.findById(movimiento.getNumeroCuenta()).orElseThrow();
-        double nuevoSaldo = cuenta.getSaldoInicial() + movimiento.getValor();
-        if (nuevoSaldo < 0) {
-            throw new RuntimeException("Saldo no disponible");
-        }
-        cuenta.setSaldoInicial(nuevoSaldo);
-        movimiento.setSaldo(nuevoSaldo);
-        cuentaRepository.save(cuenta);
-        return movimientoRepository.save(movimiento);
-    }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/service/PersonaService.java
-
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.stereotype.Service;
-
-// @Service
-// public class MovimientoService {
-//     @Autowired
-//     private MovimientoRepository movimientoRepository;
-//     @Autowired
-//     private CuentaRepository cuentaRepository;
-
-//     public Movimiento registrarMovimiento(Movimiento movimiento) {
-//         Cuenta cuenta = cuentaRepository.findById(movimiento.getNumeroCuenta()).orElseThrow();
-//         double nuevoSaldo = cuenta.getSaldoInicial() + movimiento.getValor();
-//         if (nuevoSaldo < 0) {
-//             throw new RuntimeException("Saldo no disponible");
-//         }
-//         cuenta.setSaldoInicial(nuevoSaldo);
-//         movimiento.setSaldo(nuevoSaldo);
-//         cuentaRepository.save(cuenta);
-//         return movimientoRepository.save(movimiento);
-//     }
-// }
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/service/ClienteService.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import java.util.List;
-
-@Service
-public class ClienteService {
-    @Autowired
-    private ClienteRepository clienteRepository;
-
-    public List<Cliente> getAllClientes() {
-        return clienteRepository.findAll();
-    }
-
-    public Cliente saveCliente(Cliente cliente) {
-        return clienteRepository.save(cliente);
-    }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/service/CuentaService.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import java.util.List;
-
-@Service
-public class CuentaService {
-    @Autowired
-    private CuentaRepository cuentaRepository;
-
-    public List<Cuenta> getAllCuentas() {
-        return cuentaRepository.findAll();
-    }
-
-    public Cuenta saveCuenta(Cuenta cuenta) {
-        return cuentaRepository.save(cuenta);
-    }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/controller/ClienteController.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/clientes")
-public class ClienteController {
-    @Autowired
-    private ClienteService clienteService;
-
-    @GetMapping
-    public List<Cliente> getAllClientes() {
-        return clienteService.getAllClientes();
-    }
-
-    @PostMapping
-    public Cliente createCliente(@RequestBody Cliente cliente) {
-        return clienteService.saveCliente(cliente);
-    }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/controller/MovimientoController.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-@RestController
-@RequestMapping("/api/movimientos")
-public class MovimientoController {
-    @Autowired
-    private MovimientoService movimientoService;
-
-    @PostMapping
-    public Movimiento registrarMovimiento(@RequestBody Movimiento movimiento) {
-        return movimientoService.registrarMovimiento(movimiento);
-    }
-}
-
-### FILE: ./src/main/java/com/application/microservicio_cliente/controller/CuentaController.java
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import java.util.List;
-
-@RestController
-@RequestMapping("/api/cuentas")
-public class CuentaController {
-    @Autowired
-    private CuentaService cuentaService;
-
-    @GetMapping
-    public List<Cuenta> getAllCuentas() {
-        return cuentaService.getAllCuentas();
-    }
-
-    @PostMapping
-    public Cuenta createCuenta(@RequestBody Cuenta cuenta) {
-        return cuentaService.saveCuenta(cuenta);
-    }
-}
-
-### FILE: ./src/main/resources/application.properties
-
-spring.application.name=microservicio-cliente
-
-# spring.datasource.url=jdbc:mysql://localhost:3306/banco
-# spring.datasource.username=root
-# spring.datasource.password=tu_contrase√±a
-# spring.jpa.hibernate.ddl-auto=update
-# server.port=8080  # Cambia a 8081 en el segundo microservicio
-
-
-### FILE: ./src/test/java/com/application/microservicio_cliente/MicroservicioClienteApplicationTests.java
-
-package com.application.microservicio_cliente;
-
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-
-@SpringBootTest
-class MicroservicioClienteApplicationTests {
-
-	@Test
-	void contextLoads() {
-	}
-
-}
-
-
-### FILE: ./HELP.md
-
-# Read Me First
-The following was discovered as part of building this project:
-
-* The original package name 'com.application.microservicio-cliente' is invalid and this project uses 'com.application.microservicio_cliente' instead.
-
-# Getting Started
-
-### Reference Documentation
-For further reference, please consider the following sections:
-
-* [Official Apache Maven documentation](https://maven.apache.org/guides/index.html)
-* [Spring Boot Maven Plugin Reference Guide](https://docs.spring.io/spring-boot/3.4.3/maven-plugin)
-* [Create an OCI image](https://docs.spring.io/spring-boot/3.4.3/maven-plugin/build-image.html)
-
-### Maven Parent overrides
-
-Due to Maven's design, elements are inherited from the parent POM to the project POM.
-While most of the inheritance is fine, it also inherits unwanted elements like `<license>` and `<developers>` from the parent.
-To prevent this, the project POM contains empty overrides for these elements.
-If you manually switch to a different parent and actually want the inheritance, you need to remove those overrides.
-
-
-
-### FILE: ./pom.xml
-
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-	<modelVersion>4.0.0</modelVersion>
-	<parent>
-		<groupId>org.springframework.boot</groupId>
-		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>3.4.3</version>
-		<relativePath/> <!-- lookup parent from repository -->
-	</parent>
-	<groupId>com.application</groupId>
-	<artifactId>microservicio-cliente</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<name>microservicio-cliente</name>
-	<description>microservicio cliente</description>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
-	<properties>
-		<java.version>17</java.version>
-	</properties>
-	<dependencies>
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter</artifactId>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.boot</groupId>
-			<artifactId>spring-boot-starter-test</artifactId>
-			<scope>test</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.springframework.cloud</groupId>
-			<artifactId>spring-cloud-starter-stream-rabbit</artifactId>
-		</dependency>
-	</dependencies>
-
-	<build>
-		<plugins>
-			<plugin>
-				<groupId>org.springframework.boot</groupId>
-				<artifactId>spring-boot-maven-plugin</artifactId>
-			</plugin>
-		</plugins>
-	</build>
-
-</project>
-
-
-### FILE: ./mvnw.cmd
-
-<# : batch portion
-@REM ----------------------------------------------------------------------------
-@REM Licensed to the Apache Software Foundation (ASF) under one
-@REM or more contributor license agreements.  See the NOTICE file
-@REM distributed with this work for additional information
-@REM regarding copyright ownership.  The ASF licenses this file
-@REM to you under the Apache License, Version 2.0 (the
-@REM "License"); you may not use this file except in compliance
-@REM with the License.  You may obtain a copy of the License at
-@REM
-@REM    http://www.apache.org/licenses/LICENSE-2.0
-@REM
-@REM Unless required by applicable law or agreed to in writing,
-@REM software distributed under the License is distributed on an
-@REM "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-@REM KIND, either express or implied.  See the License for the
-@REM specific language governing permissions and limitations
-@REM under the License.
-@REM ----------------------------------------------------------------------------
-
-@REM ----------------------------------------------------------------------------
-@REM Apache Maven Wrapper startup batch script, version 3.3.2
-@REM
-@REM Optional ENV vars
-@REM   MVNW_REPOURL - repo url base for downloading maven distribution
-@REM   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
-@REM   MVNW_VERBOSE - true: enable verbose log; others: silence the output
-@REM ----------------------------------------------------------------------------
-
-@IF "%__MVNW_ARG0_NAME__%"=="" (SET __MVNW_ARG0_NAME__=%~nx0)
-@SET __MVNW_CMD__=
-@SET __MVNW_ERROR__=
-@SET __MVNW_PSMODULEP_SAVE=%PSModulePath%
-@SET PSModulePath=
-@FOR /F "usebackq tokens=1* delims==" %%A IN (`powershell -noprofile "& {$scriptDir='%~dp0'; $script='%__MVNW_ARG0_NAME__%'; icm -ScriptBlock ([Scriptblock]::Create((Get-Content -Raw '%~f0'))) -NoNewScope}"`) DO @(
-  IF "%%A"=="MVN_CMD" (set __MVNW_CMD__=%%B) ELSE IF "%%B"=="" (echo %%A) ELSE (echo %%A=%%B)
-)
-@SET PSModulePath=%__MVNW_PSMODULEP_SAVE%
-@SET __MVNW_PSMODULEP_SAVE=
-@SET __MVNW_ARG0_NAME__=
-@SET MVNW_USERNAME=
-@SET MVNW_PASSWORD=
-@IF NOT "%__MVNW_CMD__%"=="" (%__MVNW_CMD__% %*)
-@echo Cannot start maven from wrapper >&2 && exit /b 1
-@GOTO :EOF
-: end batch / begin powershell #>
-
-$ErrorActionPreference = "Stop"
-if ($env:MVNW_VERBOSE -eq "true") {
-  $VerbosePreference = "Continue"
-}
-
-# calculate distributionUrl, requires .mvn/wrapper/maven-wrapper.properties
-$distributionUrl = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionUrl
-if (!$distributionUrl) {
-  Write-Error "cannot read distributionUrl property in $scriptDir/.mvn/wrapper/maven-wrapper.properties"
-}
-
-switch -wildcard -casesensitive ( $($distributionUrl -replace '^.*/','') ) {
-  "maven-mvnd-*" {
-    $USE_MVND = $true
-    $distributionUrl = $distributionUrl -replace '-bin\.[^.]*$',"-windows-amd64.zip"
-    $MVN_CMD = "mvnd.cmd"
-    break
-  }
-  default {
-    $USE_MVND = $false
-    $MVN_CMD = $script -replace '^mvnw','mvn'
-    break
-  }
-}
-
-# apply MVNW_REPOURL and calculate MAVEN_HOME
-# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
-if ($env:MVNW_REPOURL) {
-  $MVNW_REPO_PATTERN = if ($USE_MVND) { "/org/apache/maven/" } else { "/maven/mvnd/" }
-  $distributionUrl = "$env:MVNW_REPOURL$MVNW_REPO_PATTERN$($distributionUrl -replace '^.*'+$MVNW_REPO_PATTERN,'')"
-}
-$distributionUrlName = $distributionUrl -replace '^.*/',''
-$distributionUrlNameMain = $distributionUrlName -replace '\.[^.]*$','' -replace '-bin$',''
-$MAVEN_HOME_PARENT = "$HOME/.m2/wrapper/dists/$distributionUrlNameMain"
-if ($env:MAVEN_USER_HOME) {
-  $MAVEN_HOME_PARENT = "$env:MAVEN_USER_HOME/wrapper/dists/$distributionUrlNameMain"
-}
-$MAVEN_HOME_NAME = ([System.Security.Cryptography.MD5]::Create().ComputeHash([byte[]][char[]]$distributionUrl) | ForEach-Object {$_.ToString("x2")}) -join ''
-$MAVEN_HOME = "$MAVEN_HOME_PARENT/$MAVEN_HOME_NAME"
-
-if (Test-Path -Path "$MAVEN_HOME" -PathType Container) {
-  Write-Verbose "found existing MAVEN_HOME at $MAVEN_HOME"
-  Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
-  exit $?
-}
-
-if (! $distributionUrlNameMain -or ($distributionUrlName -eq $distributionUrlNameMain)) {
-  Write-Error "distributionUrl is not valid, must end with *-bin.zip, but found $distributionUrl"
-}
-
-# prepare tmp dir
-$TMP_DOWNLOAD_DIR_HOLDER = New-TemporaryFile
-$TMP_DOWNLOAD_DIR = New-Item -Itemtype Directory -Path "$TMP_DOWNLOAD_DIR_HOLDER.dir"
-$TMP_DOWNLOAD_DIR_HOLDER.Delete() | Out-Null
-trap {
-  if ($TMP_DOWNLOAD_DIR.Exists) {
-    try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
-    catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
-  }
-}
-
-New-Item -Itemtype Directory -Path "$MAVEN_HOME_PARENT" -Force | Out-Null
-
-# Download and Install Apache Maven
-Write-Verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
-Write-Verbose "Downloading from: $distributionUrl"
-Write-Verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
-
-$webclient = New-Object System.Net.WebClient
-if ($env:MVNW_USERNAME -and $env:MVNW_PASSWORD) {
-  $webclient.Credentials = New-Object System.Net.NetworkCredential($env:MVNW_USERNAME, $env:MVNW_PASSWORD)
-}
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$webclient.DownloadFile($distributionUrl, "$TMP_DOWNLOAD_DIR/$distributionUrlName") | Out-Null
-
-# If specified, validate the SHA-256 sum of the Maven distribution zip file
-$distributionSha256Sum = (Get-Content -Raw "$scriptDir/.mvn/wrapper/maven-wrapper.properties" | ConvertFrom-StringData).distributionSha256Sum
-if ($distributionSha256Sum) {
-  if ($USE_MVND) {
-    Write-Error "Checksum validation is not supported for maven-mvnd. `nPlease disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties."
-  }
-  Import-Module $PSHOME\Modules\Microsoft.PowerShell.Utility -Function Get-FileHash
-  if ((Get-FileHash "$TMP_DOWNLOAD_DIR/$distributionUrlName" -Algorithm SHA256).Hash.ToLower() -ne $distributionSha256Sum) {
-    Write-Error "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised. If you updated your Maven version, you need to update the specified distributionSha256Sum property."
-  }
-}
-
-# unzip and move
-Expand-Archive "$TMP_DOWNLOAD_DIR/$distributionUrlName" -DestinationPath "$TMP_DOWNLOAD_DIR" | Out-Null
-Rename-Item -Path "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" -NewName $MAVEN_HOME_NAME | Out-Null
-try {
-  Move-Item -Path "$TMP_DOWNLOAD_DIR/$MAVEN_HOME_NAME" -Destination $MAVEN_HOME_PARENT | Out-Null
-} catch {
-  if (! (Test-Path -Path "$MAVEN_HOME" -PathType Container)) {
-    Write-Error "fail to move MAVEN_HOME"
-  }
-} finally {
-  try { Remove-Item $TMP_DOWNLOAD_DIR -Recurse -Force | Out-Null }
-  catch { Write-Warning "Cannot remove $TMP_DOWNLOAD_DIR" }
-}
-
-Write-Output "MVN_CMD=$MAVEN_HOME/bin/$MVN_CMD"
-
-
-### FILE: ./.mvn/wrapper/maven-wrapper.properties
-
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#   http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-wrapperVersion=3.3.2
-distributionType=only-script
-distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.9/apache-maven-3.9.9-bin.zip
-
-
-### FILE: ./target/classes/com/application/microservicio_cliente/repository/ClienteRepository.class
-
- ˛∫æ   =   Bcom/application/microservicio_cliente/repository/ClienteRepository  java/lang/Object 
-SourceFile ClienteRepository.java 	Signature >Ljava/lang/Object;LJpaRepository<LCliente;Ljava/lang/String;>; InconsistentHierarchy  Cliente  JpaRepository MissingTypes                    	          
- 
-
-### FILE: ./target/classes/com/application/microservicio_cliente/repository/MovimientoRepository.class
-
- ˛∫æ   =   Ecom/application/microservicio_cliente/repository/MovimientoRepository  java/lang/Object 
-SourceFile MovimientoRepository.java 	Signature ?Ljava/lang/Object;LJpaRepository<LMovimiento;Ljava/lang/Long;>; InconsistentHierarchy  JpaRepository  
-Movimiento MissingTypes                    	          
- 
-
-### FILE: ./target/classes/com/application/microservicio_cliente/repository/PersonaRepository.class
-
- ˛∫æ   =   Bcom/application/microservicio_cliente/repository/PersonaRepository  java/lang/Object 
-SourceFile PersonaRepository.java 	Signature <Ljava/lang/Object;LJpaRepository<LPersona;Ljava/lang/Long;>; InconsistentHierarchy  JpaRepository  Persona MissingTypes                    	          
- 
-
-### FILE: ./target/classes/com/application/microservicio_cliente/repository/CuentaRepository.class
-
- ˛∫æ   =   Acom/application/microservicio_cliente/repository/CuentaRepository  java/lang/Object 
-SourceFile CuentaRepository.java 	Signature =Ljava/lang/Object;LJpaRepository<LCuenta;Ljava/lang/String;>; InconsistentHierarchy  Cuenta  JpaRepository MissingTypes                    	          
- 
-
-### FILE: ./target/classes/com/application/microservicio_cliente/MicroservicioClienteApplication.class
-
- ˛∫æ   =   Ecom/application/microservicio_cliente/MicroservicioClienteApplication  java/lang/Object <init> ()V Code
-  	   LineNumberTable LocalVariableTable this GLcom/application/microservicio_cliente/MicroservicioClienteApplication; main ([Ljava/lang/String;)V
-    *org/springframework/boot/SpringApplication   run b(Ljava/lang/Class;[Ljava/lang/String;)Lorg/springframework/context/ConfigurableApplicationContext; args [Ljava/lang/String; MethodParameters 
-SourceFile $MicroservicioClienteApplication.java RuntimeVisibleAnnotations >Lorg/springframework/boot/autoconfigure/SpringBootApplication; !               /     *∑ ±    
-                    	       6     *∏ W±    
-   
-    
-                                   
-
-### FILE: ./target/classes/com/application/microservicio_cliente/model/Persona.class
-
- ˛∫æ   = 2  3com/application/microservicio_cliente/model/Persona  java/lang/Object identificacion Ljava/lang/String; RuntimeInvisibleAnnotations LId; nombre genero edad I 	direccion telefono <init> ()V Code  java/lang/Error 9Unresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.model"
-	The import jakarta.persistence cannot be resolved
-	The import jakarta.persistence cannot be resolved
-	Entity cannot be resolved to a type
-	Id cannot be resolved to a type
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this 5Lcom/application/microservicio_cliente/model/Persona; getIdentificacion ()Ljava/lang/String;   !Unresolved compilation problem: 
- setIdentificacion MethodParameters 	getNombre 	setNombre 	getGenero 	setGenero getEdad ()I setEdad (I)V getDireccion setDireccion getTelefono setTelefono 
-SourceFile Persona.java LEntity; !                   	     
-                           4     
-ª Y∑ ø                   
-            4     
-ª Y∑ ø                   
-      !      4     
-ª Y∑ ø                   
-     "        #      4     
-ª Y∑ ø                   
-      $      4     
-ª Y∑ ø                   
-     "    	    %      4     
-ª Y∑ ø                   
-      &      4     
-ª Y∑ ø                   
-     "    
-    ' (     4     
-ª Y∑ ø                   
-      ) *     4     
-ª Y∑ ø                   
-     "        +      4     
-ª Y∑ ø                   
-      ,      4     
-ª Y∑ ø                   
-     "        -      4     
-ª Y∑ ø                   
-      .      4     
-ª Y∑ ø                   
-     "        /    0      1  
-
-### FILE: ./target/classes/com/application/microservicio_cliente/model/Cliente.class
-
- ˛∫æ   = (  3com/application/microservicio_cliente/model/Cliente  3com/application/microservicio_cliente/model/Persona 	clienteId Ljava/lang/String; 
-contrasena estado Z <init> ()V Code  java/lang/Error  ÂUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.model"
-	The import jakarta.persistence cannot be resolved
-	Entity cannot be resolved to a type
-
-   
-  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this 5Lcom/application/microservicio_cliente/model/Cliente; getClienteId ()Ljava/lang/String;  !Unresolved compilation problem: 
- setClienteId MethodParameters getContrasena setContrasena isEstado ()Z 	setEstado (Z)V 
-SourceFile Cliente.java RuntimeInvisibleAnnotations LEntity; !                  	     
-      4     
-ª Y∑ ø                   
-            4     
-ª Y∑ ø           
-        
-            4     
-ª Y∑ ø                   
-                   4     
-ª Y∑ ø                   
-            4     
-ª Y∑ ø                   
-               !     4     
-ª Y∑ ø                   
-      " #     4     
-ª Y∑ ø                   
-             $    % &     '  
-
-### FILE: ./target/classes/com/application/microservicio_cliente/model/Cuenta.class
-
- ˛∫æ   = 2  2com/application/microservicio_cliente/model/Cuenta  java/lang/Object numeroCuenta Ljava/lang/String; RuntimeInvisibleAnnotations LId; 
-tipoCuenta saldoInicial D estado Z cliente <init> ()V Code  java/lang/Error 9Unresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.model"
-	The import jakarta.persistence cannot be resolved
-	The import jakarta.persistence cannot be resolved
-	Entity cannot be resolved to a type
-	Id cannot be resolved to a type
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this 4Lcom/application/microservicio_cliente/model/Cuenta; getNumeroCuenta ()Ljava/lang/String;   !Unresolved compilation problem: 
- setNumeroCuenta MethodParameters getTipoCuenta setTipoCuenta getSaldoInicial ()D setSaldoInicial (D)V isEstado ()Z 	setEstado (Z)V 
-getCliente 
-setCliente 
-SourceFile Cuenta.java LEntity; !                   	     
-                      4     
-ª Y∑ ø                   
-            4     
-ª Y∑ ø                   
-      !      4     
-ª Y∑ ø                   
-     "        #      4     
-ª Y∑ ø                   
-      $      4     
-ª Y∑ ø                   
-     "    	    % &     4     
-ª Y∑ ø                   
-      ' (     4     
-ª Y∑ ø                   
-     "    
-    ) *     4     
-ª Y∑ ø                   
-      + ,     4     
-ª Y∑ ø                   
-     "        -      4     
-ª Y∑ ø                   
-      .      4     
-ª Y∑ ø                   
-     "        /    0      1  
-
-### FILE: ./target/classes/com/application/microservicio_cliente/model/Movimiento.class
-
- ˛∫æ   = 8  6com/application/microservicio_cliente/model/Movimiento  java/lang/Object id Ljava/lang/Long; RuntimeInvisibleAnnotations LId; fecha Ljava/util/Date; tipoMovimiento Ljava/lang/String; valor D saldo numeroCuenta <init> ()V Code  java/lang/Error 9Unresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.model"
-	The import jakarta.persistence cannot be resolved
-	The import jakarta.persistence cannot be resolved
-	Entity cannot be resolved to a type
-	Id cannot be resolved to a type
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this 8Lcom/application/microservicio_cliente/model/Movimiento; getId ()Ljava/lang/Long; " !Unresolved compilation problem: 
- setId (Ljava/lang/Long;)V MethodParameters getFecha ()Ljava/util/Date; setFecha (Ljava/util/Date;)V getTipoMovimiento ()Ljava/lang/String; setTipoMovimiento getValor ()D setValor (D)V getSaldo setSaldo getNumeroCuenta setNumeroCuenta 
-SourceFile Movimiento.java LEntity; !                   	 
-                               4     
-ª Y∑ ø                   
-             4     
-ª Y!∑ ø                   
-      # $     4     
-ª Y!∑ ø                   
-     %        & '     4     
-ª Y!∑ ø                   
-      ( )     4     
-ª Y!∑ ø                   
-     %    	    * +     4     
-ª Y!∑ ø                   
-      ,      4     
-ª Y!∑ ø                   
-     %        - .     4     
-ª Y!∑ ø                   
-      / 0     4     
-ª Y!∑ ø                   
-     %        1 .     4     
-ª Y!∑ ø                   
-      2 0     4     
-ª Y!∑ ø                   
-     %        3 +     4     
-ª Y!∑ ø                   
-      4      4     
-ª Y!∑ ø                   
-     %        5    6      7  
-
-### FILE: ./target/classes/com/application/microservicio_cliente/CuentaServiceTest.class
-
- ˛∫æ   =   7com/application/microservicio_cliente/CuentaServiceTest  java/lang/Object <init> ()V Code 	 java/lang/Error 3Unresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente"
-	The import org.junit cannot be resolved
-	The import org.mockito cannot be resolved
-	The import org.junit cannot be resolved
-	Test cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	The method mock(Class<CuentaRepository>) is undefined for the type CuentaServiceTest
-	CuentaRepository cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this 9Lcom/application/microservicio_cliente/CuentaServiceTest; testGetAllCuentas RuntimeInvisibleAnnotations LTest; QUnresolved compilation problems: 
-	Test cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	The method mock(Class<CuentaRepository>) is undefined for the type CuentaServiceTest
-	CuentaRepository cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-	CuentaService cannot be resolved to a type
- 
-SourceFile CuentaServiceTest.java !               4     
-ª Y
-∑ ø                   
-                    4     
-ª Y∑ ø                   
-          
-
-### FILE: ./target/classes/com/application/microservicio_cliente/service/ClienteService.class
-
- ˛∫æ   = +  <com/application/microservicio_cliente/service/ClienteService  java/lang/Object clienteRepository LClienteRepository; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error ëUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.service"
-	ClienteRepository cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	ClienteRepository cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	ClienteRepository cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this >Lcom/application/microservicio_cliente/service/ClienteService; getAllClientes ()Ljava/util/List; 	Signature ()Ljava/util/List<LCliente;>;  xUnresolved compilation problems: 
-	Cliente cannot be resolved to a type
-	ClienteRepository cannot be resolved to a type
- saveCliente (LCliente;)LCliente;   ûUnresolved compilation problems: 
-	Cliente cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	ClienteRepository cannot be resolved to a type
- cliente MethodParameters 
-SourceFile ClienteService.java (Lorg/springframework/stereotype/Service; ' Cliente ) ClienteRepository MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                 4     
-ª Y∑ ø           
-        
-            4     
-ª Y∑ ø                   
-     "    !    #    $      %   *     & (
-
-### FILE: ./target/classes/com/application/microservicio_cliente/service/MovimientoService.class
-
- ˛∫æ   = )  ?com/application/microservicio_cliente/service/MovimientoService  java/lang/Object movimientoRepository LMovimientoRepository; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; cuentaRepository LCuentaRepository; <init> ()V Code  java/lang/Error ˘Unresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.service"
-	MovimientoRepository cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	MovimientoRepository cannot be resolved to a type
-
-     (Ljava/lang/String;)V LineNumberTable LocalVariableTable this ALcom/application/microservicio_cliente/service/MovimientoService; registrarMovimiento (LMovimiento;)LMovimiento; *Unresolved compilation problems: 
-	Movimiento cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	MovimientoRepository cannot be resolved to a type
- 
-movimiento MethodParameters 
-SourceFile MovimientoService.java (Lorg/springframework/stereotype/Service; # CuentaRepository % 
-Movimiento ' MovimientoRepository MissingTypes !                   	 
-                  4     
-ª Y∑ ø                   
-            4     
-ª Y∑ ø                   
-                        !   (     " $ &
-
-### FILE: ./target/classes/com/application/microservicio_cliente/service/CuentaService.class
-
- ˛∫æ   = +  ;com/application/microservicio_cliente/service/CuentaService  java/lang/Object cuentaRepository LCuentaRepository; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error ãUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.service"
-	CuentaRepository cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this =Lcom/application/microservicio_cliente/service/CuentaService; getAllCuentas ()Ljava/util/List; 	Signature ()Ljava/util/List<LCuenta;>;  vUnresolved compilation problems: 
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
- 
-saveCuenta (LCuenta;)LCuenta;   õUnresolved compilation problems: 
-	Cuenta cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaRepository cannot be resolved to a type
- cuenta MethodParameters 
-SourceFile CuentaService.java (Lorg/springframework/stereotype/Service; ' Cuenta ) CuentaRepository MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                 4     
-ª Y∑ ø           
-        
-            4     
-ª Y∑ ø                   
-     "    !    #    $      %   *     & (
-
-### FILE: ./target/classes/com/application/microservicio_cliente/controller/CuentaController.class
-
- ˛∫æ   = 2  Acom/application/microservicio_cliente/controller/CuentaController  java/lang/Object cuentaService LCuentaService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error ìUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.controller"
-	The import org.springframework.web cannot be resolved
-	RestController cannot be resolved to a type
-	RequestMapping cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-	GetMapping cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-	PostMapping cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	RequestBody cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this CLcom/application/microservicio_cliente/controller/CuentaController; getAllCuentas ()Ljava/util/List; 	Signature ()Ljava/util/List<LCuenta;>; RuntimeInvisibleAnnotations LGetMapping;  úUnresolved compilation problems: 
-	GetMapping cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
- createCuenta (LCuenta;)LCuenta; LPostMapping; $RuntimeInvisibleParameterAnnotations LRequestBody; % ÏUnresolved compilation problems: 
-	PostMapping cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	RequestBody cannot be resolved to a type
-	Cuenta cannot be resolved to a type
-	CuentaService cannot be resolved to a type
- cuenta MethodParameters 
-SourceFile CuentaController.java LRestController; LRequestMapping; value . Cuenta 0 CuentaService MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                         4     
-ª Y∑ ø                   
-               !   "     #      4     
-ª Y$∑ ø                   
-     '    &    (    )      *   1     - /
-
-### FILE: ./target/classes/com/application/microservicio_cliente/controller/ClienteController.class
-
- ˛∫æ   = 2  Bcom/application/microservicio_cliente/controller/ClienteController  java/lang/Object clienteService LClienteService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error ôUnresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.controller"
-	The import org.springframework.web cannot be resolved
-	RestController cannot be resolved to a type
-	RequestMapping cannot be resolved to a type
-	ClienteService cannot be resolved to a type
-	GetMapping cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	ClienteService cannot be resolved to a type
-	PostMapping cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	RequestBody cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	ClienteService cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this DLcom/application/microservicio_cliente/controller/ClienteController; getAllClientes ()Ljava/util/List; 	Signature ()Ljava/util/List<LCliente;>; RuntimeInvisibleAnnotations LGetMapping;  ûUnresolved compilation problems: 
-	GetMapping cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	ClienteService cannot be resolved to a type
- createCliente (LCliente;)LCliente; LPostMapping; $RuntimeInvisibleParameterAnnotations LRequestBody; % ÔUnresolved compilation problems: 
-	PostMapping cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	RequestBody cannot be resolved to a type
-	Cliente cannot be resolved to a type
-	ClienteService cannot be resolved to a type
- cliente MethodParameters 
-SourceFile ClienteController.java LRestController; LRequestMapping; value . Cliente 0 ClienteService MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                         4     
-ª Y∑ ø                   
-               !   "     #      4     
-ª Y$∑ ø                   
-     '    &    (    )      *   1     - /
-
-### FILE: ./target/classes/com/application/microservicio_cliente/controller/MovimientoController.class
-
- ˛∫æ   = +  Ecom/application/microservicio_cliente/controller/MovimientoController  java/lang/Object movimientoService LMovimientoService; RuntimeVisibleAnnotations 8Lorg/springframework/beans/factory/annotation/Autowired; <init> ()V Code  java/lang/Error )Unresolved compilation problems: 
-	The declared package "" does not match the expected package "com.application.microservicio_cliente.controller"
-	The import org.springframework.web cannot be resolved
-	RestController cannot be resolved to a type
-	RequestMapping cannot be resolved to a type
-	MovimientoService cannot be resolved to a type
-	PostMapping cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	RequestBody cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	MovimientoService cannot be resolved to a type
-
-   	  (Ljava/lang/String;)V LineNumberTable LocalVariableTable this GLcom/application/microservicio_cliente/controller/MovimientoController; registrarMovimiento (LMovimiento;)LMovimiento; RuntimeInvisibleAnnotations LPostMapping; $RuntimeInvisibleParameterAnnotations LRequestBody;  ¯Unresolved compilation problems: 
-	PostMapping cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	RequestBody cannot be resolved to a type
-	Movimiento cannot be resolved to a type
-	MovimientoService cannot be resolved to a type
- 
-movimiento MethodParameters 
-SourceFile MovimientoController.java LRestController; LRequestMapping; value ' 
-Movimiento ) MovimientoService MissingTypes !                    	 
-     4     
-ª Y∑ ø                   
-                            4     
-ª Y∑ ø           
-        
-              !    "      #   *     & (
-
-### FILE: ./target/test-classes/com/application/microservicio_cliente/MicroservicioClienteApplicationTests.class
-
- ˛∫æ   =   Jcom/application/microservicio_cliente/MicroservicioClienteApplicationTests  java/lang/Object <init> ()V Code
-  	   LineNumberTable LocalVariableTable this LLcom/application/microservicio_cliente/MicroservicioClienteApplicationTests; contextLoads RuntimeVisibleAnnotations Lorg/junit/jupiter/api/Test; 
-SourceFile )MicroservicioClienteApplicationTests.java 6Lorg/springframework/boot/test/context/SpringBootTest;                  /     *∑ ±    
-                                    +      ±    
-                                 
-
-### FILE: ./mvnw
-
-#!/bin/sh
-# ----------------------------------------------------------------------------
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# ----------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------
-# Apache Maven Wrapper startup batch script, version 3.3.2
-#
-# Optional ENV vars
-# -----------------
-#   JAVA_HOME - location of a JDK home dir, required when download maven via java source
-#   MVNW_REPOURL - repo url base for downloading maven distribution
-#   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
-#   MVNW_VERBOSE - true: enable verbose log; debug: trace the mvnw script; others: silence the output
-# ----------------------------------------------------------------------------
-
-set -euf
-[ "${MVNW_VERBOSE-}" != debug ] || set -x
-
-# OS specific support.
-native_path() { printf %s\\n "$1"; }
-case "$(uname)" in
-CYGWIN* | MINGW*)
-  [ -z "${JAVA_HOME-}" ] || JAVA_HOME="$(cygpath --unix "$JAVA_HOME")"
-  native_path() { cygpath --path --windows "$1"; }
-  ;;
-esac
-
-# set JAVACMD and JAVACCMD
-set_java_home() {
-  # For Cygwin and MinGW, ensure paths are in Unix format before anything is touched
-  if [ -n "${JAVA_HOME-}" ]; then
-    if [ -x "$JAVA_HOME/jre/sh/java" ]; then
-      # IBM's JDK on AIX uses strange locations for the executables
-      JAVACMD="$JAVA_HOME/jre/sh/java"
-      JAVACCMD="$JAVA_HOME/jre/sh/javac"
-    else
-      JAVACMD="$JAVA_HOME/bin/java"
-      JAVACCMD="$JAVA_HOME/bin/javac"
-
-      if [ ! -x "$JAVACMD" ] || [ ! -x "$JAVACCMD" ]; then
-        echo "The JAVA_HOME environment variable is not defined correctly, so mvnw cannot run." >&2
-        echo "JAVA_HOME is set to \"$JAVA_HOME\", but \"\$JAVA_HOME/bin/java\" or \"\$JAVA_HOME/bin/javac\" does not exist." >&2
-        return 1
-      fi
-    fi
-  else
-    JAVACMD="$(
-      'set' +e
-      'unset' -f command 2>/dev/null
-      'command' -v java
-    )" || :
-    JAVACCMD="$(
-      'set' +e
-      'unset' -f command 2>/dev/null
-      'command' -v javac
-    )" || :
-
-    if [ ! -x "${JAVACMD-}" ] || [ ! -x "${JAVACCMD-}" ]; then
-      echo "The java/javac command does not exist in PATH nor is JAVA_HOME set, so mvnw cannot run." >&2
-      return 1
-    fi
-  fi
-}
-
-# hash string like Java String::hashCode
-hash_string() {
-  str="${1:-}" h=0
-  while [ -n "$str" ]; do
-    char="${str%"${str#?}"}"
-    h=$(((h * 31 + $(LC_CTYPE=C printf %d "'$char")) % 4294967296))
-    str="${str#?}"
-  done
-  printf %x\\n $h
-}
-
-verbose() { :; }
-[ "${MVNW_VERBOSE-}" != true ] || verbose() { printf %s\\n "${1-}"; }
-
-die() {
-  printf %s\\n "$1" >&2
-  exit 1
-}
-
-trim() {
-  # MWRAPPER-139:
-  #   Trims trailing and leading whitespace, carriage returns, tabs, and linefeeds.
-  #   Needed for removing poorly interpreted newline sequences when running in more
-  #   exotic environments such as mingw bash on Windows.
-  printf "%s" "${1}" | tr -d '[:space:]'
-}
-
-# parse distributionUrl and optional distributionSha256Sum, requires .mvn/wrapper/maven-wrapper.properties
-while IFS="=" read -r key value; do
-  case "${key-}" in
-  distributionUrl) distributionUrl=$(trim "${value-}") ;;
-  distributionSha256Sum) distributionSha256Sum=$(trim "${value-}") ;;
-  esac
-done <"${0%/*}/.mvn/wrapper/maven-wrapper.properties"
-[ -n "${distributionUrl-}" ] || die "cannot read distributionUrl property in ${0%/*}/.mvn/wrapper/maven-wrapper.properties"
-
-case "${distributionUrl##*/}" in
-maven-mvnd-*bin.*)
-  MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/
-  case "${PROCESSOR_ARCHITECTURE-}${PROCESSOR_ARCHITEW6432-}:$(uname -a)" in
-  *AMD64:CYGWIN* | *AMD64:MINGW*) distributionPlatform=windows-amd64 ;;
-  :Darwin*x86_64) distributionPlatform=darwin-amd64 ;;
-  :Darwin*arm64) distributionPlatform=darwin-aarch64 ;;
-  :Linux*x86_64*) distributionPlatform=linux-amd64 ;;
-  *)
-    echo "Cannot detect native platform for mvnd on $(uname)-$(uname -m), use pure java version" >&2
-    distributionPlatform=linux-amd64
-    ;;
-  esac
-  distributionUrl="${distributionUrl%-bin.*}-$distributionPlatform.zip"
-  ;;
-maven-mvnd-*) MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/ ;;
-*) MVN_CMD="mvn${0##*/mvnw}" _MVNW_REPO_PATTERN=/org/apache/maven/ ;;
-esac
-
-# apply MVNW_REPOURL and calculate MAVEN_HOME
-# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
-[ -z "${MVNW_REPOURL-}" ] || distributionUrl="$MVNW_REPOURL$_MVNW_REPO_PATTERN${distributionUrl#*"$_MVNW_REPO_PATTERN"}"
-distributionUrlName="${distributionUrl##*/}"
-distributionUrlNameMain="${distributionUrlName%.*}"
-distributionUrlNameMain="${distributionUrlNameMain%-bin}"
-MAVEN_USER_HOME="${MAVEN_USER_HOME:-${HOME}/.m2}"
-MAVEN_HOME="${MAVEN_USER_HOME}/wrapper/dists/${distributionUrlNameMain-}/$(hash_string "$distributionUrl")"
-
-exec_maven() {
-  unset MVNW_VERBOSE MVNW_USERNAME MVNW_PASSWORD MVNW_REPOURL || :
-  exec "$MAVEN_HOME/bin/$MVN_CMD" "$@" || die "cannot exec $MAVEN_HOME/bin/$MVN_CMD"
-}
-
-if [ -d "$MAVEN_HOME" ]; then
-  verbose "found existing MAVEN_HOME at $MAVEN_HOME"
-  exec_maven "$@"
-fi
-
-case "${distributionUrl-}" in
-*?-bin.zip | *?maven-mvnd-?*-?*.zip) ;;
-*) die "distributionUrl is not valid, must match *-bin.zip or maven-mvnd-*.zip, but found '${distributionUrl-}'" ;;
-esac
-
-# prepare tmp dir
-if TMP_DOWNLOAD_DIR="$(mktemp -d)" && [ -d "$TMP_DOWNLOAD_DIR" ]; then
-  clean() { rm -rf -- "$TMP_DOWNLOAD_DIR"; }
-  trap clean HUP INT TERM EXIT
-else
-  die "cannot create temp dir"
-fi
-
-mkdir -p -- "${MAVEN_HOME%/*}"
-
-# Download and Install Apache Maven
-verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
-verbose "Downloading from: $distributionUrl"
-verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
-
-# select .zip or .tar.gz
-if ! command -v unzip >/dev/null; then
-  distributionUrl="${distributionUrl%.zip}.tar.gz"
-  distributionUrlName="${distributionUrl##*/}"
-fi
-
-# verbose opt
-__MVNW_QUIET_WGET=--quiet __MVNW_QUIET_CURL=--silent __MVNW_QUIET_UNZIP=-q __MVNW_QUIET_TAR=''
-[ "${MVNW_VERBOSE-}" != true ] || __MVNW_QUIET_WGET='' __MVNW_QUIET_CURL='' __MVNW_QUIET_UNZIP='' __MVNW_QUIET_TAR=v
-
-# normalize http auth
-case "${MVNW_PASSWORD:+has-password}" in
-'') MVNW_USERNAME='' MVNW_PASSWORD='' ;;
-has-password) [ -n "${MVNW_USERNAME-}" ] || MVNW_USERNAME='' MVNW_PASSWORD='' ;;
-esac
-
-if [ -z "${MVNW_USERNAME-}" ] && command -v wget >/dev/null; then
-  verbose "Found wget ... using wget"
-  wget ${__MVNW_QUIET_WGET:+"$__MVNW_QUIET_WGET"} "$distributionUrl" -O "$TMP_DOWNLOAD_DIR/$distributionUrlName" || die "wget: Failed to fetch $distributionUrl"
-elif [ -z "${MVNW_USERNAME-}" ] && command -v curl >/dev/null; then
-  verbose "Found curl ... using curl"
-  curl ${__MVNW_QUIET_CURL:+"$__MVNW_QUIET_CURL"} -f -L -o "$TMP_DOWNLOAD_DIR/$distributionUrlName" "$distributionUrl" || die "curl: Failed to fetch $distributionUrl"
-elif set_java_home; then
-  verbose "Falling back to use Java to download"
-  javaSource="$TMP_DOWNLOAD_DIR/Downloader.java"
-  targetZip="$TMP_DOWNLOAD_DIR/$distributionUrlName"
-  cat >"$javaSource" <<-END
-	public class Downloader extends java.net.Authenticator
-	{
-	  protected java.net.PasswordAuthentication getPasswordAuthentication()
-	  {
-	    return new java.net.PasswordAuthentication( System.getenv( "MVNW_USERNAME" ), System.getenv( "MVNW_PASSWORD" ).toCharArray() );
-	  }
-	  public static void main( String[] args ) throws Exception
-	  {
-	    setDefault( new Downloader() );
-	    java.nio.file.Files.copy( java.net.URI.create( args[0] ).toURL().openStream(), java.nio.file.Paths.get( args[1] ).toAbsolutePath().normalize() );
-	  }
-	}
-	END
-  # For Cygwin/MinGW, switch paths to Windows format before running javac and java
-  verbose " - Compiling Downloader.java ..."
-  "$(native_path "$JAVACCMD")" "$(native_path "$javaSource")" || die "Failed to compile Downloader.java"
-  verbose " - Running Downloader.java ..."
-  "$(native_path "$JAVACMD")" -cp "$(native_path "$TMP_DOWNLOAD_DIR")" Downloader "$distributionUrl" "$(native_path "$targetZip")"
-fi
-
-# If specified, validate the SHA-256 sum of the Maven distribution zip file
-if [ -n "${distributionSha256Sum-}" ]; then
-  distributionSha256Result=false
-  if [ "$MVN_CMD" = mvnd.sh ]; then
-    echo "Checksum validation is not supported for maven-mvnd." >&2
-    echo "Please disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
-    exit 1
-  elif command -v sha256sum >/dev/null; then
-    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | sha256sum -c >/dev/null 2>&1; then
-      distributionSha256Result=true
-    fi
-  elif command -v shasum >/dev/null; then
-    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | shasum -a 256 -c >/dev/null 2>&1; then
-      distributionSha256Result=true
-    fi
-  else
-    echo "Checksum validation was requested but neither 'sha256sum' or 'shasum' are available." >&2
-    echo "Please install either command, or disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
-    exit 1
-  fi
-  if [ $distributionSha256Result = false ]; then
-    echo "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised." >&2
-    echo "If you updated your Maven version, you need to update the specified distributionSha256Sum property." >&2
-    exit 1
-  fi
-fi
-
-# unzip and move
-if command -v unzip >/dev/null; then
-  unzip ${__MVNW_QUIET_UNZIP:+"$__MVNW_QUIET_UNZIP"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -d "$TMP_DOWNLOAD_DIR" || die "failed to unzip"
-else
-  tar xzf${__MVNW_QUIET_TAR:+"$__MVNW_QUIET_TAR"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -C "$TMP_DOWNLOAD_DIR" || die "failed to untar"
-fi
-printf %s\\n "$distributionUrl" >"$TMP_DOWNLOAD_DIR/$distributionUrlNameMain/mvnw.url"
-mv -- "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" "$MAVEN_HOME" || [ -d "$MAVEN_HOME" ] || die "fail to move MAVEN_HOME"
-
-clean || :
-exec_maven "$@"
-
-
-### FILE: ./microservicio-clientes/mvnw
-
-#!/bin/sh
-# ----------------------------------------------------------------------------
-# Licensed to the Apache Software Foundation (ASF) under one
-# or more contributor license agreements.  See the NOTICE file
-# distributed with this work for additional information
-# regarding copyright ownership.  The ASF licenses this file
-# to you under the Apache License, Version 2.0 (the
-# "License"); you may not use this file except in compliance
-# with the License.  You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing,
-# software distributed under the License is distributed on an
-# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-# KIND, either express or implied.  See the License for the
-# specific language governing permissions and limitations
-# under the License.
-# ----------------------------------------------------------------------------
-
-# ----------------------------------------------------------------------------
-# Apache Maven Wrapper startup batch script, version 3.3.2
-#
-# Optional ENV vars
-# -----------------
-#   JAVA_HOME - location of a JDK home dir, required when download maven via java source
-#   MVNW_REPOURL - repo url base for downloading maven distribution
-#   MVNW_USERNAME/MVNW_PASSWORD - user and password for downloading maven
-#   MVNW_VERBOSE - true: enable verbose log; debug: trace the mvnw script; others: silence the output
-# ----------------------------------------------------------------------------
-
-set -euf
-[ "${MVNW_VERBOSE-}" != debug ] || set -x
-
-# OS specific support.
-native_path() { printf %s\\n "$1"; }
-case "$(uname)" in
-CYGWIN* | MINGW*)
-  [ -z "${JAVA_HOME-}" ] || JAVA_HOME="$(cygpath --unix "$JAVA_HOME")"
-  native_path() { cygpath --path --windows "$1"; }
-  ;;
-esac
-
-# set JAVACMD and JAVACCMD
-set_java_home() {
-  # For Cygwin and MinGW, ensure paths are in Unix format before anything is touched
-  if [ -n "${JAVA_HOME-}" ]; then
-    if [ -x "$JAVA_HOME/jre/sh/java" ]; then
-      # IBM's JDK on AIX uses strange locations for the executables
-      JAVACMD="$JAVA_HOME/jre/sh/java"
-      JAVACCMD="$JAVA_HOME/jre/sh/javac"
-    else
-      JAVACMD="$JAVA_HOME/bin/java"
-      JAVACCMD="$JAVA_HOME/bin/javac"
-
-      if [ ! -x "$JAVACMD" ] || [ ! -x "$JAVACCMD" ]; then
-        echo "The JAVA_HOME environment variable is not defined correctly, so mvnw cannot run." >&2
-        echo "JAVA_HOME is set to \"$JAVA_HOME\", but \"\$JAVA_HOME/bin/java\" or \"\$JAVA_HOME/bin/javac\" does not exist." >&2
-        return 1
-      fi
-    fi
-  else
-    JAVACMD="$(
-      'set' +e
-      'unset' -f command 2>/dev/null
-      'command' -v java
-    )" || :
-    JAVACCMD="$(
-      'set' +e
-      'unset' -f command 2>/dev/null
-      'command' -v javac
-    )" || :
-
-    if [ ! -x "${JAVACMD-}" ] || [ ! -x "${JAVACCMD-}" ]; then
-      echo "The java/javac command does not exist in PATH nor is JAVA_HOME set, so mvnw cannot run." >&2
-      return 1
-    fi
-  fi
-}
-
-# hash string like Java String::hashCode
-hash_string() {
-  str="${1:-}" h=0
-  while [ -n "$str" ]; do
-    char="${str%"${str#?}"}"
-    h=$(((h * 31 + $(LC_CTYPE=C printf %d "'$char")) % 4294967296))
-    str="${str#?}"
-  done
-  printf %x\\n $h
-}
-
-verbose() { :; }
-[ "${MVNW_VERBOSE-}" != true ] || verbose() { printf %s\\n "${1-}"; }
-
-die() {
-  printf %s\\n "$1" >&2
-  exit 1
-}
-
-trim() {
-  # MWRAPPER-139:
-  #   Trims trailing and leading whitespace, carriage returns, tabs, and linefeeds.
-  #   Needed for removing poorly interpreted newline sequences when running in more
-  #   exotic environments such as mingw bash on Windows.
-  printf "%s" "${1}" | tr -d '[:space:]'
-}
-
-# parse distributionUrl and optional distributionSha256Sum, requires .mvn/wrapper/maven-wrapper.properties
-while IFS="=" read -r key value; do
-  case "${key-}" in
-  distributionUrl) distributionUrl=$(trim "${value-}") ;;
-  distributionSha256Sum) distributionSha256Sum=$(trim "${value-}") ;;
-  esac
-done <"${0%/*}/.mvn/wrapper/maven-wrapper.properties"
-[ -n "${distributionUrl-}" ] || die "cannot read distributionUrl property in ${0%/*}/.mvn/wrapper/maven-wrapper.properties"
-
-case "${distributionUrl##*/}" in
-maven-mvnd-*bin.*)
-  MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/
-  case "${PROCESSOR_ARCHITECTURE-}${PROCESSOR_ARCHITEW6432-}:$(uname -a)" in
-  *AMD64:CYGWIN* | *AMD64:MINGW*) distributionPlatform=windows-amd64 ;;
-  :Darwin*x86_64) distributionPlatform=darwin-amd64 ;;
-  :Darwin*arm64) distributionPlatform=darwin-aarch64 ;;
-  :Linux*x86_64*) distributionPlatform=linux-amd64 ;;
-  *)
-    echo "Cannot detect native platform for mvnd on $(uname)-$(uname -m), use pure java version" >&2
-    distributionPlatform=linux-amd64
-    ;;
-  esac
-  distributionUrl="${distributionUrl%-bin.*}-$distributionPlatform.zip"
-  ;;
-maven-mvnd-*) MVN_CMD=mvnd.sh _MVNW_REPO_PATTERN=/maven/mvnd/ ;;
-*) MVN_CMD="mvn${0##*/mvnw}" _MVNW_REPO_PATTERN=/org/apache/maven/ ;;
-esac
-
-# apply MVNW_REPOURL and calculate MAVEN_HOME
-# maven home pattern: ~/.m2/wrapper/dists/{apache-maven-<version>,maven-mvnd-<version>-<platform>}/<hash>
-[ -z "${MVNW_REPOURL-}" ] || distributionUrl="$MVNW_REPOURL$_MVNW_REPO_PATTERN${distributionUrl#*"$_MVNW_REPO_PATTERN"}"
-distributionUrlName="${distributionUrl##*/}"
-distributionUrlNameMain="${distributionUrlName%.*}"
-distributionUrlNameMain="${distributionUrlNameMain%-bin}"
-MAVEN_USER_HOME="${MAVEN_USER_HOME:-${HOME}/.m2}"
-MAVEN_HOME="${MAVEN_USER_HOME}/wrapper/dists/${distributionUrlNameMain-}/$(hash_string "$distributionUrl")"
-
-exec_maven() {
-  unset MVNW_VERBOSE MVNW_USERNAME MVNW_PASSWORD MVNW_REPOURL || :
-  exec "$MAVEN_HOME/bin/$MVN_CMD" "$@" || die "cannot exec $MAVEN_HOME/bin/$MVN_CMD"
-}
-
-if [ -d "$MAVEN_HOME" ]; then
-  verbose "found existing MAVEN_HOME at $MAVEN_HOME"
-  exec_maven "$@"
-fi
-
-case "${distributionUrl-}" in
-*?-bin.zip | *?maven-mvnd-?*-?*.zip) ;;
-*) die "distributionUrl is not valid, must match *-bin.zip or maven-mvnd-*.zip, but found '${distributionUrl-}'" ;;
-esac
-
-# prepare tmp dir
-if TMP_DOWNLOAD_DIR="$(mktemp -d)" && [ -d "$TMP_DOWNLOAD_DIR" ]; then
-  clean() { rm -rf -- "$TMP_DOWNLOAD_DIR"; }
-  trap clean HUP INT TERM EXIT
-else
-  die "cannot create temp dir"
-fi
-
-mkdir -p -- "${MAVEN_HOME%/*}"
-
-# Download and Install Apache Maven
-verbose "Couldn't find MAVEN_HOME, downloading and installing it ..."
-verbose "Downloading from: $distributionUrl"
-verbose "Downloading to: $TMP_DOWNLOAD_DIR/$distributionUrlName"
-
-# select .zip or .tar.gz
-if ! command -v unzip >/dev/null; then
-  distributionUrl="${distributionUrl%.zip}.tar.gz"
-  distributionUrlName="${distributionUrl##*/}"
-fi
-
-# verbose opt
-__MVNW_QUIET_WGET=--quiet __MVNW_QUIET_CURL=--silent __MVNW_QUIET_UNZIP=-q __MVNW_QUIET_TAR=''
-[ "${MVNW_VERBOSE-}" != true ] || __MVNW_QUIET_WGET='' __MVNW_QUIET_CURL='' __MVNW_QUIET_UNZIP='' __MVNW_QUIET_TAR=v
-
-# normalize http auth
-case "${MVNW_PASSWORD:+has-password}" in
-'') MVNW_USERNAME='' MVNW_PASSWORD='' ;;
-has-password) [ -n "${MVNW_USERNAME-}" ] || MVNW_USERNAME='' MVNW_PASSWORD='' ;;
-esac
-
-if [ -z "${MVNW_USERNAME-}" ] && command -v wget >/dev/null; then
-  verbose "Found wget ... using wget"
-  wget ${__MVNW_QUIET_WGET:+"$__MVNW_QUIET_WGET"} "$distributionUrl" -O "$TMP_DOWNLOAD_DIR/$distributionUrlName" || die "wget: Failed to fetch $distributionUrl"
-elif [ -z "${MVNW_USERNAME-}" ] && command -v curl >/dev/null; then
-  verbose "Found curl ... using curl"
-  curl ${__MVNW_QUIET_CURL:+"$__MVNW_QUIET_CURL"} -f -L -o "$TMP_DOWNLOAD_DIR/$distributionUrlName" "$distributionUrl" || die "curl: Failed to fetch $distributionUrl"
-elif set_java_home; then
-  verbose "Falling back to use Java to download"
-  javaSource="$TMP_DOWNLOAD_DIR/Downloader.java"
-  targetZip="$TMP_DOWNLOAD_DIR/$distributionUrlName"
-  cat >"$javaSource" <<-END
-	public class Downloader extends java.net.Authenticator
-	{
-	  protected java.net.PasswordAuthentication getPasswordAuthentication()
-	  {
-	    return new java.net.PasswordAuthentication( System.getenv( "MVNW_USERNAME" ), System.getenv( "MVNW_PASSWORD" ).toCharArray() );
-	  }
-	  public static void main( String[] args ) throws Exception
-	  {
-	    setDefault( new Downloader() );
-	    java.nio.file.Files.copy( java.net.URI.create( args[0] ).toURL().openStream(), java.nio.file.Paths.get( args[1] ).toAbsolutePath().normalize() );
-	  }
-	}
-	END
-  # For Cygwin/MinGW, switch paths to Windows format before running javac and java
-  verbose " - Compiling Downloader.java ..."
-  "$(native_path "$JAVACCMD")" "$(native_path "$javaSource")" || die "Failed to compile Downloader.java"
-  verbose " - Running Downloader.java ..."
-  "$(native_path "$JAVACMD")" -cp "$(native_path "$TMP_DOWNLOAD_DIR")" Downloader "$distributionUrl" "$(native_path "$targetZip")"
-fi
-
-# If specified, validate the SHA-256 sum of the Maven distribution zip file
-if [ -n "${distributionSha256Sum-}" ]; then
-  distributionSha256Result=false
-  if [ "$MVN_CMD" = mvnd.sh ]; then
-    echo "Checksum validation is not supported for maven-mvnd." >&2
-    echo "Please disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
-    exit 1
-  elif command -v sha256sum >/dev/null; then
-    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | sha256sum -c >/dev/null 2>&1; then
-      distributionSha256Result=true
-    fi
-  elif command -v shasum >/dev/null; then
-    if echo "$distributionSha256Sum  $TMP_DOWNLOAD_DIR/$distributionUrlName" | shasum -a 256 -c >/dev/null 2>&1; then
-      distributionSha256Result=true
-    fi
-  else
-    echo "Checksum validation was requested but neither 'sha256sum' or 'shasum' are available." >&2
-    echo "Please install either command, or disable validation by removing 'distributionSha256Sum' from your maven-wrapper.properties." >&2
-    exit 1
-  fi
-  if [ $distributionSha256Result = false ]; then
-    echo "Error: Failed to validate Maven distribution SHA-256, your Maven distribution might be compromised." >&2
-    echo "If you updated your Maven version, you need to update the specified distributionSha256Sum property." >&2
-    exit 1
-  fi
-fi
-
-# unzip and move
-if command -v unzip >/dev/null; then
-  unzip ${__MVNW_QUIET_UNZIP:+"$__MVNW_QUIET_UNZIP"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -d "$TMP_DOWNLOAD_DIR" || die "failed to unzip"
-else
-  tar xzf${__MVNW_QUIET_TAR:+"$__MVNW_QUIET_TAR"} "$TMP_DOWNLOAD_DIR/$distributionUrlName" -C "$TMP_DOWNLOAD_DIR" || die "failed to untar"
-fi
-printf %s\\n "$distributionUrl" >"$TMP_DOWNLOAD_DIR/$distributionUrlNameMain/mvnw.url"
-mv -- "$TMP_DOWNLOAD_DIR/$distributionUrlNameMain" "$MAVEN_HOME" || [ -d "$MAVEN_HOME" ] || die "fail to move MAVEN_HOME"
-
-clean || :
-exec_maven "$@"
-
-
-### FILE: ./README.md
-
-# Microservicios Banco
-
-## Requisitos
-- Docker
-- Docker Compose
-
-## Despliegue
-1. Clonar el repositorio:
-   ```bash
-   git clone <URL_REPOSITORIO>
-   cd <NOMBRE_REPOSITORIO>
-
-    Construir y ejecutar los contenedores:
-    bash
-
-    docker-compose up --build
-    Acceder a los servicios:
-        Microservicio Clientes: http://localhost:8080/api/clientes
-        Microservicio Cuentas: http://localhost:8081/api/cuentas
-        RabbitMQ Management: http://localhost:15672 (usuario: guest, contrase√±a: guest)
-
-Endpoints
-
-    Clientes: CRUD en /api/clientes
-    Cuentas: CRUD en /api/cuentas
-    Movimientos: CRUD en /api/movimientos
-    Reportes: GET /api/reportes?fecha-rango=dd/MM/yyyy-dd/MM/yyyy&cliente=<identificacion>
-
-### FILE: ./BaseDatos.sql
-
-CREATE DATABASE IF NOT EXISTS banco;
-USE banco;
-
-CREATE TABLE persona (
-    identificacion VARCHAR(20) PRIMARY KEY,
-    nombre VARCHAR(100),
-    genero VARCHAR(10),
-    edad INT,
-    direccion VARCHAR(200),
-    telefono VARCHAR(20)
-);
-
-CREATE TABLE cliente (
-    identificacion VARCHAR(20) PRIMARY KEY,
-    cliente_id VARCHAR(20),
-    contrasena VARCHAR(50),
-    estado BOOLEAN,
-    FOREIGN KEY (identificacion) REFERENCES persona(identificacion)
-);
-
-CREATE TABLE cuenta (
-    numero_cuenta VARCHAR(20) PRIMARY KEY,
-    tipo_cuenta VARCHAR(20),
-    saldo_inicial DOUBLE,
-    estado BOOLEAN,
-    cliente_identificacion VARCHAR(20),
-    FOREIGN KEY (cliente_identificacion) REFERENCES persona(identificacion)
-);
-
-CREATE TABLE movimiento (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    fecha DATETIME,
-    tipo_movimiento VARCHAR(20),
-    valor DOUBLE,
-    saldo DOUBLE,
-    numero_cuenta VARCHAR(20),
-    FOREIGN KEY (numero_cuenta) REFERENCES cuenta(numero_cuenta)
-);
-
-INSERT INTO persona (identificacion, nombre, genero, edad, direccion, telefono) VALUES
-('123456789', 'Jos√© Lema', 'M', 35, 'Otavalo sn y principal', '098254785'),
-('987654321', 'Marianela Montalvo', 'F', 28, 'Amazonas y NNUU', '097548965'),
-('456789123', 'Juan Osorio', 'M', 40, '13 junio y Equinoccial', '098874587');
-
-INSERT INTO cliente (identificacion, cliente_id, contrasena, estado) VALUES
-('123456789', 'CL001', '1234', TRUE),
-('987654321', 'CL002', '5678', TRUE),
-('456789123', 'CL003', '1245', TRUE);
-
-INSERT INTO cuenta (numero_cuenta, tipo_cuenta, saldo_inicial, estado, cliente_identificacion) VALUES
-('478758', 'Ahorros', 2000, TRUE, '123456789'),
-('225487', 'Corriente', 100, TRUE, '987654321'),
-('498778', 'Ahorros', 0, TRUE, '456789123'),
-('496825', 'Ahorros', 540, TRUE, '987654321'),
-('585545', 'Corriente', 1000, TRUE, '123456789');
-
-INSERT INTO movimiento (fecha, tipo_movimiento, valor, saldo, numero_cuenta) VALUES
-('2022-02-10 00:00:00', 'Dep√≥sito', 600, 700, '225487'),
-('2022-02-08 00:00:00', 'Retiro', -540, 0, '496825');
-
-### FILE: ./LICENSE
-
-MIT License
-
-Copyright (c) 2025 David Alberto Mena
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-
-### FILE: ./docker-compose.yml
-
-services:
-  microservicio-clientes:
-    build: ./microservicio-clientes
-    ports:
-      - "8080:8080"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_started
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/banco
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_RABBITMQ_HOST: rabbitmq
-    networks:
-      - app_network
-
-  microservicio-cuentas:
-    build: ./microservicio-cuentas
-    ports:
-      - "8081:8081"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/banco
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      SPRING_RABBITMQ_HOST: rabbitmq
-    networks:
-      - app_network
-
-  mysql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: banco
-    ports:
-      - "3306:3306"
-    volumes:
-      - db_data:/var/lib/mysql
-      - ./BaseDatos.sql:/docker-entrypoint-initdb.d/BaseDatos.sql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app_network
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "5673:5672"
-      - "15673:15672"
-    networks:
-      - app_network
-    healthcheck:
-      test: ["CMD", "rabbitmqctl", "status"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-networks:
-  app_network:
-    driver: bridge
-
-volumes:
-  db_data:
