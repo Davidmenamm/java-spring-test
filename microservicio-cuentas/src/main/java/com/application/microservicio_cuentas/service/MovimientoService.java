@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -29,7 +30,7 @@ public class MovimientoService {
         }
         cuenta.setSaldoInicial(nuevoSaldo);
         movimiento.setSaldo(nuevoSaldo);
-        movimiento.setFecha(new Date());
+        movimiento.setFecha(new Date()); // Set current timestamp
         cuentaRepository.save(cuenta);
         return movimientoRepository.save(movimiento);
     }
@@ -60,6 +61,13 @@ public class MovimientoService {
     }
 
     public List<Movimiento> getReporte(String numeroCuenta, Date fechaInicio, Date fechaFin) {
-        return movimientoRepository.findByNumeroCuentaAndFechaBetween(numeroCuenta, fechaInicio, fechaFin);
+        // Adjust fechaFin to include the entire day
+        Calendar cal = Calendar.getInstance();
+        cal.setTime(fechaFin);
+        cal.set(Calendar.HOUR_OF_DAY, 23);
+        cal.set(Calendar.MINUTE, 59);
+        cal.set(Calendar.SECOND, 59);
+        Date adjustedFechaFin = cal.getTime();
+        return movimientoRepository.findByNumeroCuentaAndFechaBetween(numeroCuenta, fechaInicio, adjustedFechaFin);
     }
 }

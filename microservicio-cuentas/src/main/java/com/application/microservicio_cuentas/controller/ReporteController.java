@@ -23,7 +23,7 @@ public class ReporteController {
     private CuentaService cuentaService;
     @Autowired
     private MovimientoService movimientoService;
-
+    
     @GetMapping("/reportes")
     public Map<String, Object> generarReporte(
             @RequestParam("fechaInicio") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaInicio,
