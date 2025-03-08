@@ -61,6 +61,7 @@ Este proyecto implementa un sistema bancario basado en microservicios utilizando
 * `DELETE /api/movimientos/{id}`: Elimina un movimiento por su ID.
 * `GET /api/reportes`: Genera un reporte de movimientos.
 
+
 ## Comunicación entre Microservicios
 
 * Los microservicios se comunican de forma asíncrona mediante RabbitMQ.
@@ -73,6 +74,33 @@ Este proyecto implementa un sistema bancario basado en microservicios utilizando
 * Entidades:
     * **Clientes:** Persona y Cliente.
     * **Cuentas:** Cuenta y Movimientos.
+
+## Pruebas con Postman
+
+Para probar los endpoints de los microservicios, puedes utilizar la colección de Postman proporcionada `postman_test.json`. Sigue estos pasos:
+
+1. **Importar la colección:**
+   - Abre Postman.
+   - Haz clic en `Import` en la esquina superior izquierda.
+   - Selecciona `Upload Files` y carga el archivo JSON de la colección.
+
+2. **Configurar el entorno:**
+   - Crea un nuevo entorno en Postman.
+   - Agrega las siguientes variables:
+     - `cliente_url`: `http://localhost:8080`
+     - `cuenta_url`: `http://localhost:8081`
+
+3. **Ejecutar las pruebas:**
+   - Selecciona la colección importada.
+   - Ejecuta las solicitudes en el siguiente orden:
+     1. **Clientes:** Crea los clientes (José Lema, Marianela Montalvo, Juan Osorio).
+     2. **Cuentas:** Crea las cuentas asociadas a los clientes.
+     3. **Movimientos:** Registra los movimientos (depósitos y retiros).
+     4. **Reportes:** Genera los reportes de movimientos por cliente.
+
+4. **Verificar resultados:**
+   - Revisa las respuestas de cada solicitud para asegurarte de que los datos se han creado y actualizado correctamente.
+   - Utiliza los endpoints de verificación (`GET /api/clientes`, `GET /api/cuentas`, `GET /api/movimientos`) para confirmar el estado del sistema.
 
 ## Solución de Problemas
 

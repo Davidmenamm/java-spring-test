@@ -6,10 +6,7 @@ import com.application.microservicio_cuentas.service.CuentaService;
 import com.application.microservicio_cuentas.service.MovimientoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
 import java.util.HashMap;
@@ -23,7 +20,8 @@ public class ReporteController {
     private CuentaService cuentaService;
     @Autowired
     private MovimientoService movimientoService;
-    
+
+    // Generar reporte de movimientos por cliente y fechas
     @GetMapping("/reportes")
     public Map<String, Object> generarReporte(
             @RequestParam("fechaInicio") @DateTimeFormat(pattern = "dd/MM/yyyy") Date fechaInicio,

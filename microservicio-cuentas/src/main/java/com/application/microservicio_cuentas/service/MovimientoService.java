@@ -20,6 +20,7 @@ public class MovimientoService {
     @Autowired
     private CuentaRepository cuentaRepository;
 
+    // Registrar movimiento y actualizar saldo
     @Transactional
     public Movimiento registrarMovimiento(Movimiento movimiento) {
         Cuenta cuenta = cuentaRepository.findById(movimiento.getNumeroCuenta())
@@ -30,20 +31,23 @@ public class MovimientoService {
         }
         cuenta.setSaldoInicial(nuevoSaldo);
         movimiento.setSaldo(nuevoSaldo);
-        movimiento.setFecha(new Date()); // Set current timestamp
+        movimiento.setFecha(new Date()); // Fecha actual
         cuentaRepository.save(cuenta);
         return movimientoRepository.save(movimiento);
     }
 
+    // Obtener todos los movimientos
     public List<Movimiento> getAllMovimientos() {
         return movimientoRepository.findAll();
     }
 
+    // Obtener movimiento por ID
     public Movimiento getMovimientoById(Long id) {
         return movimientoRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Movimiento no encontrado"));
     }
 
+    // Actualizar movimiento por ID
     @Transactional
     public Movimiento updateMovimiento(Long id, Movimiento movimiento) {
         Movimiento existingMovimiento = getMovimientoById(id);
@@ -55,13 +59,14 @@ public class MovimientoService {
         return movimientoRepository.save(existingMovimiento);
     }
 
+    // Eliminar movimiento por ID
     @Transactional
     public void deleteMovimiento(Long id) {
         movimientoRepository.deleteById(id);
     }
 
+    // Obtener reporte de movimientos por cuenta y rango de fechas
     public List<Movimiento> getReporte(String numeroCuenta, Date fechaInicio, Date fechaFin) {
-        // Adjust fechaFin to include the entire day
         Calendar cal = Calendar.getInstance();
         cal.setTime(fechaFin);
         cal.set(Calendar.HOUR_OF_DAY, 23);

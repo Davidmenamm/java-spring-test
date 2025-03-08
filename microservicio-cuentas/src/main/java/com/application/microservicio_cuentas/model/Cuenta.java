@@ -12,8 +12,10 @@ public class Cuenta {
     private boolean estado;
     private String clienteIdentificacion;
 
+    // Constructor vacio
     public Cuenta() {}
 
+    // Getters y Setters
     public String getNumeroCuenta() { return numeroCuenta; }
     public void setNumeroCuenta(String numeroCuenta) { this.numeroCuenta = numeroCuenta; }
     public String getTipoCuenta() { return tipoCuenta; }

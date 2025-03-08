@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 @Component
 public class MessageListener {
 
+    // Escucha mensajes y los imprime
     @Bean
     public Consumer<String> input() {
         return message -> System.out.println("Mensaje recibido desde cuentas: " + message);

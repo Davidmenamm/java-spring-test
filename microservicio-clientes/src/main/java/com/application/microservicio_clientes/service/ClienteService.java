@@ -16,14 +16,17 @@ public class ClienteService {
         this.clienteRepository = clienteRepository;
     }
 
+    // Obtener todos los clientes
     public List<Cliente> getAllClientes() {
         return clienteRepository.findAll();
     }
 
+    // Guardar cliente
     public Cliente saveCliente(Cliente cliente) {
         return clienteRepository.save(cliente);
     }
 
+    // Actualizar cliente por identificación
     public Cliente updateCliente(String identificacion, Cliente cliente) {
         Cliente existingCliente = clienteRepository.findById(identificacion)
                 .orElseThrow(() -> new RuntimeException("Cliente no encontrado"));
@@ -38,6 +41,7 @@ public class ClienteService {
         return clienteRepository.save(existingCliente);
     }
 
+    // Eliminar cliente por identificación
     public void deleteCliente(String identificacion) {
         clienteRepository.deleteById(identificacion);
     }

@@ -14,22 +14,26 @@ public class ClienteController {
     @Autowired
     private ClienteService clienteService;
 
+    // Obtener todos los clientes
     @GetMapping
     public List<Cliente> getAllClientes() {
         return clienteService.getAllClientes();
     }
 
+    // Crear un nuevo cliente
     @PostMapping
     public Cliente createCliente(@RequestBody Cliente cliente) {
         return clienteService.saveCliente(cliente);
     }
 
+    // Actualizar cliente por identificación
     @PutMapping("/{identificacion}")
     public ResponseEntity<Cliente> updateCliente(@PathVariable String identificacion, @RequestBody Cliente cliente) {
         Cliente updatedCliente = clienteService.updateCliente(identificacion, cliente);
         return ResponseEntity.ok(updatedCliente);
     }
 
+    // Eliminar cliente por identificación
     @DeleteMapping("/{identificacion}")
     public ResponseEntity<Void> deleteCliente(@PathVariable String identificacion) {
         clienteService.deleteCliente(identificacion);

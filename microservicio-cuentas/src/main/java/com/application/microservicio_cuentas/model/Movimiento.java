@@ -17,8 +17,10 @@ public class Movimiento {
     private double saldo;
     private String numeroCuenta;
 
+    // Constructor
     public Movimiento() {}
 
+    // Getters y Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Date getFecha() { return fecha; }

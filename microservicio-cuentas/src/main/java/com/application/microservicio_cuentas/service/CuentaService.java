@@ -19,16 +19,19 @@ public class CuentaService {
         this.streamBridge = streamBridge;
     }
 
+    // Obtener todas las cuentas
     public List<Cuenta> getAllCuentas() {
         return cuentaRepository.findAll();
     }
 
+    // Guardar cuenta y enviar mensaje
     public Cuenta saveCuenta(Cuenta cuenta) {
         Cuenta savedCuenta = cuentaRepository.save(cuenta);
         streamBridge.send("output", "Cuenta creada: " + savedCuenta.getNumeroCuenta());
         return savedCuenta;
     }
 
+    // Actualizar cuenta por número de cuenta
     public Cuenta updateCuenta(String numeroCuenta, Cuenta cuenta) {
         Cuenta existingCuenta = cuentaRepository.findById(numeroCuenta)
                 .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
@@ -39,6 +42,7 @@ public class CuentaService {
         return cuentaRepository.save(existingCuenta);
     }
 
+    // Eliminar cuenta por número de cuenta
     public void deleteCuenta(String numeroCuenta) {
         cuentaRepository.deleteById(numeroCuenta);
     }
