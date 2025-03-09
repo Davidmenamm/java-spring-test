@@ -8,7 +8,7 @@ public class Cliente extends Persona {
     private String contrasena;
     private boolean estado;
 
-    // Constructor
+    // Constructor vacío
     public Cliente() {}
 
     // Getters y Setters

@@ -1,5 +1,7 @@
 package com.application.microservicio_cuentas.service;
 
+import com.application.microservicio_cuentas.exception.CuentaNoEncontradaException;
+import com.application.microservicio_cuentas.exception.MovimientoNoEncontradoException;
 import com.application.microservicio_cuentas.exception.SaldoNoDisponibleException;
 import com.application.microservicio_cuentas.model.Cuenta;
 import com.application.microservicio_cuentas.model.Movimiento;
@@ -20,15 +22,25 @@ public class MovimientoService {
     @Autowired
     private CuentaRepository cuentaRepository;
 
-    // Registrar movimiento y actualizar saldo
+    // registra un movimiento y actualiza el saldo de la cuenta.
     @Transactional
     public Movimiento registrarMovimiento(Movimiento movimiento) {
         Cuenta cuenta = cuentaRepository.findById(movimiento.getNumeroCuenta())
-                .orElseThrow(() -> new RuntimeException("Cuenta no encontrada"));
+                .orElseThrow(() -> new CuentaNoEncontradaException(movimiento.getNumeroCuenta()));
+        
+        // Validaciones adicionales
+        if ("Retiro".equals(movimiento.getTipoMovimiento()) && movimiento.getValor() > 0) {
+            throw new IllegalArgumentException("El valor de un retiro debe ser negativo");
+        }
+        if ("Depósito".equals(movimiento.getTipoMovimiento()) && movimiento.getValor() < 0) {
+            throw new IllegalArgumentException("El valor de un depósito debe ser positivo");
+        }
+
         double nuevoSaldo = cuenta.getSaldoInicial() + movimiento.getValor();
         if (nuevoSaldo < 0) {
-            throw new SaldoNoDisponibleException("Saldo no disponible");
+            throw new SaldoNoDisponibleException("Saldo no disponible para la cuenta: " + movimiento.getNumeroCuenta());
         }
+        
         cuenta.setSaldoInicial(nuevoSaldo);
         movimiento.setSaldo(nuevoSaldo);
         movimiento.setFecha(new Date()); // Fecha actual
@@ -36,18 +48,18 @@ public class MovimientoService {
         return movimientoRepository.save(movimiento);
     }
 
-    // Obtener todos los movimientos
+    // Obtiener todos los movimientos.
     public List<Movimiento> getAllMovimientos() {
         return movimientoRepository.findAll();
     }
 
-    // Obtener movimiento por ID
+    // Obtiene un movimiento por su ID.
     public Movimiento getMovimientoById(Long id) {
         return movimientoRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Movimiento no encontrado"));
+                .orElseThrow(() -> new MovimientoNoEncontradoException(id));
     }
 
-    // Actualizar movimiento por ID
+    // Actualiza un movimiento existente.
     @Transactional
     public Movimiento updateMovimiento(Long id, Movimiento movimiento) {
         Movimiento existingMovimiento = getMovimientoById(id);
@@ -59,13 +71,16 @@ public class MovimientoService {
         return movimientoRepository.save(existingMovimiento);
     }
 
-    // Eliminar movimiento por ID
+    // Elimina un movimiento por su ID.
     @Transactional
     public void deleteMovimiento(Long id) {
+        if (!movimientoRepository.existsById(id)) {
+            throw new MovimientoNoEncontradoException(id);
+        }
         movimientoRepository.deleteById(id);
     }
 
-    // Obtener reporte de movimientos por cuenta y rango de fechas
+    // Genera un reporte de movimientos por cuenta y rango de fechas.
     public List<Movimiento> getReporte(String numeroCuenta, Date fechaInicio, Date fechaFin) {
         Calendar cal = Calendar.getInstance();
         cal.setTime(fechaFin);

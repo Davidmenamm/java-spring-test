@@ -1,114 +1,137 @@
 # Microservicios Banco
 
-Este proyecto implementa un sistema bancario basado en microservicios utilizando Java Spring Boot. Incluye los siguientes microservicios:
-
-* **Microservicio Clientes:** Gestiona la información de clientes y personas.
-* **Microservicio Cuentas:** Administra cuentas bancarias y movimientos.
+Este proyecto implementa un sistema bancario basado en microservicios utilizando **Java Spring Boot**. Actualmente incluye el **Microservicio Cuentas**, que administra cuentas bancarias y movimientos, con soporte para pruebas unitarias, de integración y pruebas de API mediante Karate DSL.
 
 ## Tecnologías Utilizadas
 
-* **Java Spring Boot:** Framework para el desarrollo de microservicios.
-* **RabbitMQ:** Para la comunicación asíncrona entre microservicios.
-* **MySQL:** Base de datos relacional para el almacenamiento de datos.
-* **Docker:** Para la contenerización de las aplicaciones.
-* **Docker Compose:** Para la orquestación de los contenedores.
+- **Java 17 con Spring Boot 3.4.3**: Framework para el desarrollo del microservicio.
+- **Spring Data JPA**: Para la persistencia de datos con MySQL y H2 (en pruebas).
+- **RabbitMQ**: Comunicación asíncrona entre microservicios.
+- **MySQL**: Base de datos relacional para producción.
+- **H2**: Base de datos en memoria para pruebas.
+- **Docker**: Contenerización de la aplicación.
+- **Maven**: Gestión de dependencias y construcción.
+- **JUnit 5 y Mockito**: Pruebas unitarias e integración.
+- **Karate DSL**: Pruebas automatizadas de API.
+- **Postman**: Pruebas manuales de API (opcional).
+
+## Estructura del Proyecto
+
+- **Microservicio Cuentas**: Gestiona cuentas (`Cuenta`) y movimientos (`Movimiento`).
+  - **Modelos**: `Cuenta` y `Movimiento` con anotaciones JPA.
+  - **Repositorios**: `CuentaRepository` y `MovimientoRepository` para operaciones CRUD.
+  - **Servicios**: `CuentaService` y `MovimientoService` con lógica de negocio.
+  - **Controladores**: `CuentaController`, `MovimientoController` y `ReporteController` para endpoints REST.
+  - **Excepciones**: Manejo de errores como `SaldoNoDisponibleException`.
+  - **Pruebas**: Unitarias (`CuentaServiceUnitTest`) e integración (`MovimientoServiceIntegrationTest`).
 
 ## Requisitos
 
-* Docker
-* Docker Compose
-* Git (opcional)
+- **Docker** y **Docker Compose** (para despliegue).
+- **Maven** (para construir y ejecutar pruebas localmente).
+- **Git** (opcional, para clonar el repositorio).
+- **Postman** (opcional, para pruebas manuales).
 
 ## Despliegue
 
-1.  Clona el repositorio:
+1. **Clonar el repositorio**:
+   ```bash
+   git clone <URL_REPOSITORIO>
+   cd microservicio-cuentas
 
-    \`\`\`bash
-    git clone <URL\_REPOSITORIO>
-    cd <NOMBRE\_REPOSITORIO>
-    \`\`\`
+## Construir y ejecutar
 
-2.  Construye y ejecuta los contenedores:
+**Con Docker:**
+\`\`\`bash
+docker-compose up --build
+\`\`\`
+Accede al microservicio en: [http://localhost:8081/api/cuentas](http://localhost:8081/api/cuentas).
+RabbitMQ: [http://localhost:15672](http://localhost:15672) (usuario: guest, contraseña: guest).
 
-    \`\`\`bash
-    docker-compose up --build
-    \`\`\`
+**Ejecutar localmente sin Docker** (requiere MySQL y RabbitMQ locales):
+\`\`\`bash
+./mvnw spring-boot:run
+\`\`\`
 
-3.  Accede a los servicios:
+## Endpoints (Microservicio Cuentas - [http://localhost:8081](http://localhost:8081))
 
-    * **Microservicio Clientes:** <http://localhost:8080/api/clientes>
-    * **Microservicio Cuentas:** <http://localhost:8081/api/cuentas>
-    * **RabbitMQ:** <http://localhost:15672> (usuario: `guest`, contraseña: `guest`)
+**Cuentas:**
+- \`GET /api/cuentas\`: Lista todas las cuentas.
+- \`POST /api/cuentas\`: Crea una nueva cuenta.
+- \`PUT /api/cuentas/{numeroCuenta}\`: Actualiza una cuenta por número.
+- \`DELETE /api/cuentas/{numeroCuenta}\`: Elimina una cuenta.
 
-## Endpoints
+**Movimientos:**
+- \`GET /api/movimientos\`: Lista todos los movimientos.
+- \`POST /api/movimientos\`: Registra un movimiento (depósito/retiro).
+- \`GET /api/movimientos/{id}\`: Obtiene un movimiento por ID.
+- \`PUT /api/movimientos/{id}\`: Actualiza un movimiento.
+- \`DELETE /api/movimientos/{id}\`: Elimina un movimiento.
 
-### Microservicio Clientes (http://localhost:8080)
+**Reportes:**
+- \`GET /api/reportes?fechaInicio=dd/MM/yyyy&fechaFin=dd/MM/yyyy&cliente=<identificacion>\`: Genera un reporte de movimientos por cliente y rango de fechas.
 
-* `GET /api/clientes`: Lista todos los clientes.
-* `POST /api/clientes`: Crea un nuevo cliente.
-* `PUT /api/clientes/{identificacion}`: Actualiza un cliente existente por su identificación.
-* `DELETE /api/clientes/{identificacion}`: Elimina un cliente por su identificación.
+## Comunicación Asíncrona
 
-### Microservicio Cuentas (http://localhost:8081)
-
-* `GET /api/cuentas`: Lista todas las cuentas.
-* `POST /api/cuentas`: Crea una nueva cuenta.
-* `PUT /api/cuentas/{numeroCuenta}`: Actualiza una cuenta existente por su número de cuenta.
-* `DELETE /api/cuentas/{numeroCuenta}`: Elimina una cuenta por su número de cuenta.
-* `GET /api/movimientos`: Lista todos los movimientos.
-* `POST /api/movimientos`: Registra un nuevo movimiento.
-* `PUT /api/movimientos/{id}`: Actualiza un movimiento existente por su ID.
-* `DELETE /api/movimientos/{id}`: Elimina un movimiento por su ID.
-* `GET /api/reportes`: Genera un reporte de movimientos.
-
-
-## Comunicación entre Microservicios
-
-* Los microservicios se comunican de forma asíncrona mediante RabbitMQ.
-* El Microservicio Cuentas envía mensajes a la cola `cuenta-events`.
-* El Microservicio Clientes escucha la cola para actualizar las vinculaciones.
+Usa RabbitMQ para enviar eventos de creación de cuentas a la cola \`cuenta-events\`.
+Configurado en \`application.properties\` con reintentos habilitados.
 
 ## Base de Datos
 
-* MySQL es gestionada por Docker Compose.
-* Entidades:
-    * **Clientes:** Persona y Cliente.
-    * **Cuentas:** Cuenta y Movimientos.
+**Producción:** MySQL (gestionado por Docker Compose).
+**Pruebas:** H2 en memoria (perfil \`test\`).
 
-## Pruebas con Postman
+## Entidades:
 
-Para probar los endpoints de los microservicios, puedes utilizar la colección de Postman proporcionada `postman_test.json`. Sigue estos pasos:
+**Cuenta:** Número de cuenta, tipo, saldo inicial, estado, identificación del cliente.
+**Movimiento:** ID, fecha, tipo, valor, saldo, número de cuenta.
 
-1. **Importar la colección:**
-   - Abre Postman.
-   - Haz clic en `Import` en la esquina superior izquierda.
-   - Selecciona `Upload Files` y carga el archivo JSON de la colección.
+## Pruebas
 
-2. **Configurar el entorno:**
-   - Crea un nuevo entorno en Postman.
-   - Agrega las siguientes variables:
-     - `cliente_url`: `http://localhost:8080`
-     - `cuenta_url`: `http://localhost:8081`
+**Pruebas Unitarias e Integración**
+Ubicadas en \`src/test/java/com/application/microservicio_cuentas/service\`.
+- **Unitarias:** \`CuentaServiceUnitTest\` usa Mockito para probar \`saveCuenta\`.
+- **Integración:** \`MovimientoServiceIntegrationTest\` verifica el registro de movimientos y actualización de saldos con H2.
+**Ejecutar:**
+\`\`\`bash
+./mvnw test
+\`\`\`
 
-3. **Ejecutar las pruebas:**
-   - Selecciona la colección importada.
-   - Ejecuta las solicitudes en el siguiente orden:
-     1. **Clientes:** Crea los clientes (José Lema, Marianela Montalvo, Juan Osorio).
-     2. **Cuentas:** Crea las cuentas asociadas a los clientes.
-     3. **Movimientos:** Registra los movimientos (depósitos y retiros).
-     4. **Reportes:** Genera los reportes de movimientos por cliente.
+**Pruebas de API con Karate DSL**
+Integradas en el directorio de pruebas (asumiendo que están en \`src/test/java\` o similar).
+Automatizan el flujo de creación de cuentas, movimientos y reportes.
+Ejecutadas automáticamente con \`./mvnw test\`.
 
-4. **Verificar resultados:**
-   - Revisa las respuestas de cada solicitud para asegurarte de que los datos se han creado y actualizado correctamente.
-   - Utiliza los endpoints de verificación (`GET /api/clientes`, `GET /api/cuentas`, `GET /api/movimientos`) para confirmar el estado del sistema.
+**Pruebas Manuales con Postman (Opcional)**
+Usa \`postman.json\` (asumiendo que lo proporcionarás) para pruebas manuales si no usas Karate DSL.
+**Pasos:**
+1. Importa \`postman.json\` en Postman.
+2. Configura variables:
+    - \`cuenta_url\`: [http://localhost:8081](http://localhost:8081)
+3. Ejecuta las solicitudes en orden:
+    - Crear cuentas.
+    - Registrar movimientos.
+    - Generar reportes.
+4. Verifica las respuestas con \`GET /api/cuentas\` y \`GET /api/movimientos\`.
+
+## Configuración
+
+- \`application.properties\`: Configura MySQL, RabbitMQ y HikariCP.
+- \`application-test.properties\`: Configura H2 para pruebas.
+- Personaliza puertos o credenciales si es necesario.
+
+## Construcción de Imagen Docker
+
+\`Dockerfile\` multi-etapa:
+- Etapa 1: Compila con JDK 17.
+- Etapa 2: Ejecuta con JRE 17.
+**Ejecutar:**
+\`\`\`bash
+docker build -t microservicio-cuentas .
+\`\`\`
 
 ## Solución de Problemas
 
-* Verifica los contenedores activos con `docker ps`.
-* Asegúrate de que los puertos 8080, 8081, 3306 y 5672/15672 no estén en uso.
-* Revisa RabbitMQ en <http://localhost:15672>.
-
-## Notas Adicionales
-
-* Utiliza Postman o cURL para probar los endpoints.
-* Personaliza las configuraciones en `application.properties` y `docker-compose.yml`.
+- Verifica contenedores: \`docker ps\`.
+- Puertos requeridos: 8081 (app), 3306 (MySQL), 5672/15672 (RabbitMQ).
+- Logs: \`docker logs <container_id>\`.

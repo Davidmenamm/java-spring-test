@@ -4,12 +4,13 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+
 import java.util.Date;
 
 @Entity
 public class Movimiento {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)  // Add this line
     private Long id;
     private Date fecha;
     private String tipoMovimiento;
@@ -17,7 +18,7 @@ public class Movimiento {
     private double saldo;
     private String numeroCuenta;
 
-    // Constructor
+    // Constructor vacio
     public Movimiento() {}
 
     // Getters y Setters

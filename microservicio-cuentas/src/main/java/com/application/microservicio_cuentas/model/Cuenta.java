@@ -12,7 +12,7 @@ public class Cuenta {
     private boolean estado;
     private String clienteIdentificacion;
 
-    // Constructor vacio
+    // constructor vacio
     public Cuenta() {}
 
     // Getters y Setters

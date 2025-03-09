@@ -43,6 +43,15 @@
             <artifactId>spring-cloud-starter-stream-rabbit</artifactId>
         </dependency>
 
+        <!-- API Testing -->
+        <dependency>
+            <groupId>com.intuit.karate</groupId>
+            <artifactId>karate-junit5</artifactId>
+            <version>1.4.0</version>
+            <scope>test</scope>
+        </dependency>
+
+
         <!-- Test dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
