@@ -81,5 +81,7 @@ Resumen paso a paso para desplegar y ejecutar ambos microservicios, incluyendo l
 -   **API (Karate DSL):** Ejecutar: `./mvnw test` desde el directorio `microservicio-cuentas`.
 -   **Manuales (Postman - Opcional):** Importar `postman.json` en Postman, ejecutar todos los endpoints.
 
+## Detalles
+- Realice el programa en un ordenador con linux mint, no lo he probado en Windows o Mac.
 
 ## Muchas Gracias!
